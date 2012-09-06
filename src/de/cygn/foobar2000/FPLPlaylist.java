@@ -244,9 +244,15 @@ public class FPLPlaylist {
 		ArrayList<Track> tracklist = new ArrayList<>();
 		//String playlist_filename = "5.fpl";
 		//String playlist_filename = "rave.fpl";
-		String playlist_filename = "c:\\Users\\Thomas\\PortableApps\\foobar2000\\database.dat";
+		if (argc.length < 2) {
+			System.out.println("usage: foobarConverter input.fpl output.m3u");
+			System.exit(-1);
+		}
+		String fpl_filename = argc[0];
+		String m3u_filename = argc[1];
+		System.out.println("converting "+fpl_filename+ " to "+m3u_filename);
 		//String playlist_filename = "c:\\Users\\Thomas\\Desktop\\foobar2000\\database.dat";
-		FileInputStream f = new FileInputStream(playlist_filename);
+		FileInputStream f = new FileInputStream(fpl_filename);
 		FileChannel ch = f.getChannel();
 		MappedByteBuffer mb = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
 		mb.order(ByteOrder.LITTLE_ENDIAN);
@@ -265,7 +271,7 @@ public class FPLPlaylist {
 			// @todo: make a guess by finding first string
 			return;
 		}
-		saveM3U(tracklist, new File("c:\\temp\\bla99.m3u"));
+		saveM3U(tracklist, new File(m3u_filename));
 		
 //		try {
 //			FileOutputStream fout = new FileOutputStream("c:\\temp\\databasejava.dat");
