@@ -1,5 +1,11 @@
 package de.cygn.foobar2000;
 
+import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.dao.DaoManager;
+import com.j256.ormlite.jdbc.JdbcConnectionSource;
+import com.j256.ormlite.logger.LocalLog;
+import com.j256.ormlite.support.ConnectionSource;
+import com.j256.ormlite.table.TableUtils;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,12 +20,15 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.attribute.FileTime;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 class StringStore {
 
@@ -149,6 +158,7 @@ public class FPLPlaylist {
 			for (int k = 0; k < keys.size(); k++) {
 				track.properties.put(keys.get(k), values.get(k));
 			}
+			track.updateFields();
 		}
 	}
 
@@ -272,15 +282,48 @@ public class FPLPlaylist {
 			return;
 		}
 		saveM3U(tracklist, new File(m3u_filename));
-		
-//		try {
-//			FileOutputStream fout = new FileOutputStream("c:\\temp\\databasejava.dat");
-//			ObjectOutputStream oos = new ObjectOutputStream(fout);
-//			oos.writeObject(tracklist);
-//			oos.close();
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-		
+		/*
+		try {
+			saveDatabase(tracklist);			
+		} catch (SQLException ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+		}
+		*/
+	//		try {
+	//			FileOutputStream fout = new FileOutputStream("c:\\temp\\databasejava.dat");
+	//			ObjectOutputStream oos = new ObjectOutputStream(fout);
+	//			oos.writeObject(tracklist);
+	//			oos.close();
+	//		} catch (Exception e) {
+	//		}
+	//		}
+	
+	}
+
+	private static void saveDatabase(ArrayList<Track> tracklist) throws SQLException {
+        String databaseUrl = "jdbc:h2:mem:account";
+		databaseUrl = "jdbc:h2:tcp://localhost/~/test";
+		System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
+        // create a connection source to our database
+		ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl,"sa","");
+		//Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/test","sa","");
+        // instantiate the dao
+        Dao<Track, String> trackDao =
+            DaoManager.createDao(connectionSource, Track.class);
+
+        // if you need to create the 'accounts' table make this call
+        TableUtils.createTable(connectionSource, Track.class);
+
+ 	
+		for (Track track : tracklist) {
+	        trackDao.create(track);
+		}
+
+        // retrieve the account from the database by its id field (name)
+        //Account account2 = accountDao.queryForId("Jim Coakley");
+        //System.out.println("Account: " + account2.getName());
+
+        // close the connection source
+        connectionSource.close();
 	}
 }
