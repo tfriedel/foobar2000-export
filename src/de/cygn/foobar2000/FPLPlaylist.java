@@ -52,26 +52,30 @@ class StringStore {
 
 public class FPLPlaylist {
 
+	private static int[] export_fpl_magic = {-1852006175, 1115110648, -868537211, -221052652};
+	private static int[] intern_fpl_magic = {-614910208, 1314278724, 717632640, -1180268102};
+	private static int[] database_fpl_magic = {-1854960391, 1262355587, -545234278, -2121477978};
+
 	public static void saveM3U(ArrayList<Track> playlist, File output) throws FileNotFoundException, IOException {
 		BufferedWriter out = new BufferedWriter(new FileWriter(output));
 		out.write("#EXTM3U\n");
 		for (Track track : playlist) {
 			String title = "";
 			String artist = "";
-			if (track.properties.containsKey("title")) {
-				title = track.properties.get("title").get(0);
+			if (track.getProperties().containsKey("title")) {
+				title = track.getProperties().get("title").get(0);
 			}
-			if (track.properties.containsKey("artist")) {
-				artist = track.properties.get("artist").get(0);
+			if (track.getProperties().containsKey("artist")) {
+				artist = track.getProperties().get("artist").get(0);
 			}
 			out.write("#EXTINF:");
-			out.write((int) track.duration);
+			out.write((int) track.getDuration());
 			out.write(",");
 			out.write(artist);
 			out.write(" - ");
 			out.write(title);
 			out.write("\n");
-			out.write(track.filename);
+			out.write(track.getFilename());
 			out.write("\n");
 			//String line = String.format("#EXTINF:%d,%s - %s\n%s\n", (int)track.duration, artist, title, track.filename );
 			//out.write(line);
@@ -82,7 +86,7 @@ public class FPLPlaylist {
 
 	public static void decodePlaylist(ByteBuffer mb, int number_of_songs, Map<Integer, String> string_store, int string_table_offset, ArrayList<Track> tracklist, int start_track) throws IOException {
 		for (int i = 0; i < number_of_songs; i++) {
-			mb.getInt(); //  4 byte integer, unknown meaning. Seems to be a single-digit integer value, often 1 or 3
+			int fileExists = mb.getInt(); //  4 byte integer, if this is 0, the file doesn't exist
 
 			Track track;
 			if (start_track >= 0) {  // database mode
@@ -95,68 +99,73 @@ public class FPLPlaylist {
 			}
 
 			mb.getInt(); //  4 bytes, always 0?
-			track.filesize = mb.getInt();
-			mb.getInt(); //  4 bytes, always 0?
-			mb.getDouble(); // 8 bytes, unknown meaning
-			track.duration = mb.getDouble(); //  8 byte floating point value representing duration in seconds
-			track.albumReplayGain = mb.getFloat(); // 4 bytes, probably floating point album replaygain value (7AC4 = -1.00 if none)
-			track.trackReplayGain = mb.getFloat(); // 4 byte floating point representing track replaygain value (7AC4 = -1.00 if none)
-			track.albumReplayPeak = mb.getFloat(); //4 bytes, probably representing an album peak value (80BF = 1.00 if none)
-			track.trackReplayPeak = mb.getFloat();
 
-			// key/value store starts here. read the number of items
-			int total_keys = mb.getInt();
-			int nr_of_non_interleaved_keys = mb.getInt();
-			int nr_of_interleaved_keys = mb.getInt();
-			total_keys = nr_of_interleaved_keys + nr_of_non_interleaved_keys;
-			mb.getInt(); // unknown ?
+			// @todo open hiphop playlist, first track there doesn't exist and produces problems
+			if (fileExists != 0) {
+				track.setFilesize(mb.getInt());
+				mb.getInt(); //  4 bytes, always 0?
+				mb.getDouble(); // 8 bytes, unknown meaning
+				track.setDuration(mb.getDouble()); //  8 byte floating point value representing duration in seconds
+				track.setAlbumReplayGain(mb.getFloat()); // 4 bytes, probably floating point album replaygain value (7AC4 = -1.00 if none)
+				track.setTrackReplayGain(mb.getFloat()); // 4 byte floating point representing track replaygain value (7AC4 = -1.00 if none)
+				track.setAlbumReplayPeak(mb.getFloat()); //4 bytes, probably representing an album peak value (80BF = 1.00 if none)
+				track.setTrackReplayPeak(mb.getFloat());
 
-			// we will establish a mapping key -> <list of values>
-			ArrayList<String> keys = new ArrayList<>();
-			ArrayList<ArrayList<String>> values = new ArrayList<>();
-			for (int j = 0; j < total_keys; j++) {
-				values.add(new ArrayList<String>());
-			}
-			// in the playlist file, there is first a part of keys, then a
-			// part with values
-			// like this: 
-			// keyA, keyB, keyC, keyD, valueA, valueB1, valueB2, valueC,...
-			// 
-			// these are referenced by pointers, which is handled here
-			// the value_positions list is a list of offsets pointing to the values
-			// like this:
-			// 1,2,4,5
-			// we want to know how many values a key has, so we calculate
-			// a list called number_of_values from this which looks like this:
-			// 1,2,1,1
-			ArrayList<Integer> value_positions = new ArrayList<>();
-			ArrayList<Integer> number_of_values = new ArrayList<>();
 
-			value_positions.add(mb.getInt());
-			for (int j = 0; j < nr_of_non_interleaved_keys; j++) {
-				keys.add(string_store.get(string_table_offset + mb.getInt()));
-				value_positions.add(Integer.valueOf(mb.getInt()));
-			}
-			for (int j = 1; j < value_positions.size(); j++) {
-				number_of_values.add(Integer.valueOf(value_positions.get(j) - value_positions.get(j - 1)));
-			}
+				// key/value store starts here. read the number of items
+				int total_keys = mb.getInt();
+				int nr_of_non_interleaved_keys = mb.getInt();
+				int nr_of_interleaved_keys = mb.getInt();
+				total_keys = nr_of_interleaved_keys + nr_of_non_interleaved_keys;
+				int unknown = mb.getInt(); // unknown ?
 
-			for (int j = 0; j < nr_of_non_interleaved_keys; j++) {
-				for (int k = 0; k < number_of_values.get(j); k++) {
-					values.get(j).add(string_store.get(string_table_offset + mb.getInt()));
+				// we will establish a mapping key -> <list of values>
+				ArrayList<String> keys = new ArrayList<>();
+				ArrayList<ArrayList<String>> values = new ArrayList<>();
+				for (int j = 0; j < total_keys; j++) {
+					values.add(new ArrayList<String>());
 				}
-			}
+				// in the playlist file, there is first a part of keys, then a
+				// part with values
+				// like this: 
+				// keyA, keyB, keyC, keyD, valueA, valueB1, valueB2, valueC,...
+				// 
+				// these are referenced by pointers, which is handled here
+				// the value_positions list is a list of offsets pointing to the values
+				// like this:
+				// 1,2,4,5
+				// we want to know how many values a key has, so we calculate
+				// a list called number_of_values from this which looks like this:
+				// 1,2,1,1
+				ArrayList<Integer> value_positions = new ArrayList<>();
+				ArrayList<Integer> number_of_values = new ArrayList<>();
 
-			// after the part were keys and values were stored separately comes
-			// a part where we have lots of key/value pairs following each other
-			for (int j = 0; j < nr_of_interleaved_keys; j++) {
-				keys.add(string_store.get(string_table_offset + mb.getInt()));
-				values.get(nr_of_non_interleaved_keys + j).add(string_store.get(string_table_offset + mb.getInt()));
-				number_of_values.add(Integer.valueOf(1));
-			}
+				value_positions.add(mb.getInt());
+				for (int j = 0; j < nr_of_non_interleaved_keys; j++) {
+					keys.add(string_store.get(string_table_offset + mb.getInt()));
+					value_positions.add(Integer.valueOf(mb.getInt()));
+				}
+				for (int j = 1; j < value_positions.size(); j++) {
+					number_of_values.add(Integer.valueOf(value_positions.get(j) - value_positions.get(j - 1)));
+				}
 
-			for (int k = 0; k < keys.size(); k++) {
-				track.properties.put(keys.get(k), values.get(k));
+				for (int j = 0; j < nr_of_non_interleaved_keys; j++) {
+					for (int k = 0; k < number_of_values.get(j); k++) {
+						values.get(j).add(string_store.get(string_table_offset + mb.getInt()));
+					}
+				}
+
+				// after the part were keys and values were stored separately comes
+				// a part where we have lots of key/value pairs following each other
+				for (int j = 0; j < nr_of_interleaved_keys; j++) {
+					keys.add(string_store.get(string_table_offset + mb.getInt()));
+					values.get(nr_of_non_interleaved_keys + j).add(string_store.get(string_table_offset + mb.getInt()));
+					number_of_values.add(Integer.valueOf(1));
+				}
+
+				for (int k = 0; k < keys.size(); k++) {
+					track.getProperties().put(keys.get(k).toLowerCase(), values.get(k));
+				}
 			}
 			track.updateFields();
 		}
@@ -247,21 +256,8 @@ public class FPLPlaylist {
 		decodePlaylist(mb, number_of_songs, string_store, header_length, tracklist, -1);
 	}
 
-	public static void main(String argc[]) throws FileNotFoundException, IOException {
-		int[] export_fpl_magic = {-1852006175, 1115110648, -868537211, -221052652};
-		int[] intern_fpl_magic = {-614910208, 1314278724, 717632640, -1180268102};
-		int[] database_fpl_magic = {-1854960391, 1262355587, -545234278, -2121477978};
+	public static ArrayList<Track> readPlaylist(File fpl_filename) throws FileNotFoundException, IOException {
 		ArrayList<Track> tracklist = new ArrayList<>();
-		//String playlist_filename = "5.fpl";
-		//String playlist_filename = "rave.fpl";
-		if (argc.length < 2) {
-			System.out.println("usage: foobarConverter input.fpl output.m3u");
-			System.exit(-1);
-		}
-		String fpl_filename = argc[0];
-		String m3u_filename = argc[1];
-		System.out.println("converting "+fpl_filename+ " to "+m3u_filename);
-		//String playlist_filename = "c:\\Users\\Thomas\\Desktop\\foobar2000\\database.dat";
 		FileInputStream f = new FileInputStream(fpl_filename);
 		FileChannel ch = f.getChannel();
 		MappedByteBuffer mb = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
@@ -277,53 +273,48 @@ public class FPLPlaylist {
 		} else if (Arrays.equals(magic, database_fpl_magic)) {
 			handleDatabase(mb, 24, tracklist);
 		} else {
-			System.out.println("wrong FPL version!");
+			throw new Error("wrong FPL version!");
 			// @todo: make a guess by finding first string
-			return;
 		}
+		return tracklist;
+	}
+
+	public static void main(String argc[]) throws FileNotFoundException, IOException {
+		if (argc.length < 2) {
+			System.out.println("usage: foobarConverter input.fpl output.m3u");
+			System.exit(-1);
+		}
+		String fpl_filename = argc[0];
+		String m3u_filename = argc[1];
+		System.out.println("converting " + fpl_filename + " to " + m3u_filename);
+		ArrayList<Track> tracklist = readPlaylist(new File(fpl_filename));
 		saveM3U(tracklist, new File(m3u_filename));
-		/*
-		try {
-			saveDatabase(tracklist);			
-		} catch (SQLException ex) {
-			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
-		}
-		*/
-	//		try {
-	//			FileOutputStream fout = new FileOutputStream("c:\\temp\\databasejava.dat");
-	//			ObjectOutputStream oos = new ObjectOutputStream(fout);
-	//			oos.writeObject(tracklist);
-	//			oos.close();
-	//		} catch (Exception e) {
-	//		}
-	//		}
-	
 	}
 
 	private static void saveDatabase(ArrayList<Track> tracklist) throws SQLException {
-        String databaseUrl = "jdbc:h2:mem:account";
+		String databaseUrl = "jdbc:h2:mem:account";
 		databaseUrl = "jdbc:h2:tcp://localhost/~/test";
 		System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
-        // create a connection source to our database
-		ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl,"sa","");
+		// create a connection source to our database
+		ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl, "sa", "");
 		//Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/test","sa","");
-        // instantiate the dao
-        Dao<Track, String> trackDao =
-            DaoManager.createDao(connectionSource, Track.class);
+		// instantiate the dao
+		Dao<Track, String> trackDao =
+				DaoManager.createDao(connectionSource, Track.class);
 
-        // if you need to create the 'accounts' table make this call
-        TableUtils.createTable(connectionSource, Track.class);
+		// if you need to create the 'accounts' table make this call
+		TableUtils.createTable(connectionSource, Track.class);
 
- 	
+
 		for (Track track : tracklist) {
-	        trackDao.create(track);
+			trackDao.create(track);
 		}
 
-        // retrieve the account from the database by its id field (name)
-        //Account account2 = accountDao.queryForId("Jim Coakley");
-        //System.out.println("Account: " + account2.getName());
+		// retrieve the account from the database by its id field (name)
+		//Account account2 = accountDao.queryForId("Jim Coakley");
+		//System.out.println("Account: " + account2.getName());
 
-        // close the connection source
-        connectionSource.close();
+		// close the connection source
+		connectionSource.close();
 	}
 }

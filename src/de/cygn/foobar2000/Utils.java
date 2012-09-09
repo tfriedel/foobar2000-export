@@ -15,6 +15,11 @@ public class Utils {
 		return s;
 	}
 
+	/** true if string empty or null */
+	public static boolean isEmpty(String str) {
+		return str == null || str.length() == 0;
+	}
+	
 	public static String cleanFoldername(String foldername) {
 		if (foldername.startsWith("file://")) {
 			foldername = foldername.substring(7);

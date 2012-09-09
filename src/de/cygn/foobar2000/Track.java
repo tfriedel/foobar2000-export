@@ -6,67 +6,68 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
+import java.io.File;
 
 @DatabaseTable(tableName = "tracks")
 public class Track {
 
 	@DatabaseField
-	String filename;
+	private String filename;
 	@DatabaseField
-	long filetime_in_millis;
+	private long filetime_in_millis;
 	@DatabaseField
-	String artist;
+	private String artist;
 	@DatabaseField
-	String album_artist;
+	private String album_artist;
 	@DatabaseField
-	String title;
+	private String title;
 	@DatabaseField
-	String tracknumber;
+	private String tracknumber;
 	@DatabaseField
-	String bitrate;
+	private String bitrate;
 	@DatabaseField
-	String album;
+	private String album;
 	@DatabaseField
-	String date;
+	private String date;
 	@DatabaseField(dataType=DataType.LONG_STRING)
-	String comment;
+	private String comment;
 	@DatabaseField
-	String catnr;
+	private String catnr;
 	@DatabaseField
-	String codec;
+	private String codec;
 	@DatabaseField
-	String publisher;
+	private String publisher;
 	@DatabaseField
-	String discogs_release_id;
+	private String discogs_release_id;
 	@DatabaseField
-	String style;
+	private String style;
 	@DatabaseField
-	String genre;
+	private String genre;
 	@DatabaseField
-	float bpm;
+	private float bpm;
 	@DatabaseField
-	int rating;
+	private int rating;
 	@DatabaseField
-	String key_start;
+	private String key_start;
 	/**
 	 * duration in seconds
 	 */
 	@DatabaseField
-	double duration;
+	private double duration;
 	@DatabaseField
-	int filesize;
+	private int filesize;
 	@DatabaseField
-	float albumReplayGain;
+	private float albumReplayGain;
 	@DatabaseField
-	float trackReplayGain;
+	private float trackReplayGain;
 	@DatabaseField
-	float albumReplayPeak;
+	private float albumReplayPeak;
 	@DatabaseField
-	float trackReplayPeak;
-	HashMap<String, ArrayList<String>> properties;
+	private float trackReplayPeak;
+	private HashMap<String, ArrayList<String>> properties;
 
 	public String toString() {
-		return String.format("%s, %s", filename, properties);
+		return String.format("%s, %s", getFilename(), getProperties());
 	}
 
 	public Track() {
@@ -96,70 +97,439 @@ public class Track {
 	}
 	
 	void updateFields() {
-		if (properties.containsKey("artist")) {
-			artist = makeFit(properties.get("artist").get(0));
+		if (getProperties().containsKey("artist")) {
+			setArtist(makeFit(getProperties().get("artist").get(0)));
 		}
-		if (properties.containsKey("title")) {
-			title = makeFit(properties.get("title").get(0));
+		if (getProperties().containsKey("title")) {
+			setTitle(makeFit(getProperties().get("title").get(0)));
 		}
-		if (properties.containsKey("album")) {
-			album = makeFit(properties.get("album").get(0));
+		if (getProperties().containsKey("album")) {
+			setAlbum(makeFit(getProperties().get("album").get(0)));
 		}
-		if (properties.containsKey("tracknumber")) {
-			tracknumber = makeFit(properties.get("tracknumber").get(0));
+		if (getProperties().containsKey("tracknumber")) {
+			setTracknumber(makeFit(getProperties().get("tracknumber").get(0)));
 		}
-		if (properties.containsKey("bpm")) {
+		if (getProperties().containsKey("bpm")) {
 			try {
-				bpm = Float.valueOf(properties.get("bpm").get(0));
+				setBpm((float) Float.valueOf(getProperties().get("bpm").get(0)));
 			} catch (NumberFormatException e) {
-				String bpm_string = properties.get("bpm").get(0);
+				String bpm_string = getProperties().get("bpm").get(0);
 				bpm_string = bpm_string.replace(",", ".");
 				try {
-					bpm = Float.valueOf(bpm_string);
+					setBpm((float) Float.valueOf(bpm_string));
 				} catch (NumberFormatException e2) {
 					
 				}
 			}
 		}
-		if (properties.containsKey("key_start")) {
-			key_start = makeFit(properties.get("key_start").get(0));
+		if (getProperties().containsKey("key_start")) {
+			setKey_start(makeFit(getProperties().get("key_start").get(0)));
 		}
-		if (properties.containsKey("date")) {
-			date = makeFit(properties.get("date").get(0));
+		if (getProperties().containsKey("date")) {
+			setDate(makeFit(getProperties().get("date").get(0)));
 		}
-		if (properties.containsKey("CATNR")) {
-			catnr = makeFit(properties.get("CATNR").get(0));
+		if (getProperties().containsKey("catnr")) {
+			setCatnr(makeFit(getProperties().get("catnr").get(0)));
 		}
-		if (properties.containsKey("publisher")) {
-			publisher = makeFit(properties.get("publisher").get(0));
+		if (getProperties().containsKey("publisher")) {
+			setPublisher(makeFit(getProperties().get("publisher").get(0)));
 		}
-		if (properties.containsKey("DISCOGS_RELEASE_ID")) {
-			discogs_release_id = makeFit(properties.get("DISCOGS_RELEASE_ID").get(0));
+		if (getProperties().containsKey("discogs_release_id")) {
+			setDiscogs_release_id(makeFit(getProperties().get("discogs_release_id").get(0)));
 		}
-		if (properties.containsKey("STYLE")) {
-			style = makeFit(properties.get("STYLE").get(0));
+		if (getProperties().containsKey("style")) {
+			setStyle(makeFit(getProperties().get("style").get(0)));
 		}
-		if (properties.containsKey("bitrate")) {
-			bitrate = makeFit(properties.get("bitrate").get(0));
+		if (getProperties().containsKey("bitrate")) {
+			setBitrate(makeFit(getProperties().get("bitrate").get(0)));
 		}
-		if (properties.containsKey("comment")) {
-			comment = makeFit(properties.get("comment").get(0));
+		if (getProperties().containsKey("comment")) {
+			setComment(makeFit(getProperties().get("comment").get(0)));
 		}
-		if (properties.containsKey("codec")) {
-			codec = makeFit(properties.get("codec").get(0));
+		if (getProperties().containsKey("codec")) {
+			setCodec(makeFit(getProperties().get("codec").get(0)));
 		}
-		if (properties.containsKey("genre")) {
-			genre = makeFit(properties.get("genre").get(0));
+		if (getProperties().containsKey("genre")) {
+			setGenre(makeFit(getProperties().get("genre").get(0)));
 		}
-		if (properties.containsKey("ALBUM ARTIST")) {
-			album_artist = makeFit(properties.get("ALBUM ARTIST").get(0));
+		if (getProperties().containsKey("album artist")) {
+			setAlbum_artist(makeFit(getProperties().get("album artist").get(0)));
 		}
-		if (properties.containsKey("RATING")) {
+		if (getProperties().containsKey("rating")) {
+			String rating = getProperties().get("rating").get(0);
 			try {
-				rating = Integer.valueOf(properties.get("RATING").get(0)); // @todo make failsafe
+				setRating((int) Integer.valueOf(getProperties().get("rating").get(0))); // @todo make failsafe
 			} catch (NumberFormatException e) {
 				
 			}
 		}
+	}
+
+	/**
+	 * @return the filename
+	 */
+	public String getFilename() {
+		return filename;
+	}
+
+	/**
+	 * @param filename the filename to set
+	 */
+	public void setFilename(String filename) {
+		this.filename = filename;
+	}
+
+	/**
+	 * @return the filetime_in_millis
+	 */
+	public long getFiletime_in_millis() {
+		return filetime_in_millis;
+	}
+
+	/**
+	 * @param filetime_in_millis the filetime_in_millis to set
+	 */
+	public void setFiletime_in_millis(long filetime_in_millis) {
+		this.filetime_in_millis = filetime_in_millis;
+	}
+
+	/**
+	 * @return the artist
+	 */
+	public String getArtist() {
+		return artist;
+	}
+
+	/**
+	 * @param artist the artist to set
+	 */
+	public void setArtist(String artist) {
+		this.artist = artist;
+	}
+
+	/**
+	 * @return the album_artist
+	 */
+	public String getAlbum_artist() {
+		return album_artist;
+	}
+
+	/**
+	 * @param album_artist the album_artist to set
+	 */
+	public void setAlbum_artist(String album_artist) {
+		this.album_artist = album_artist;
+	}
+
+	/**
+	 * @return the title
+	 */
+	public String getTitle() {
+		if (Utils.isEmpty(title)) {
+			if (!(Utils.isEmpty(filename)))
+				return new File(filename).getName();
+		}
+		return title;
+	}
+
+	/**
+	 * @param title the title to set
+	 */
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	/**
+	 * @return the tracknumber
+	 */
+	public String getTracknumber() {
+		return tracknumber;
+	}
+
+	/**
+	 * @param tracknumber the tracknumber to set
+	 */
+	public void setTracknumber(String tracknumber) {
+		this.tracknumber = tracknumber;
+	}
+
+	/**
+	 * @return the bitrate
+	 */
+	public String getBitrate() {
+		return bitrate;
+	}
+
+	/**
+	 * @param bitrate the bitrate to set
+	 */
+	public void setBitrate(String bitrate) {
+		this.bitrate = bitrate;
+	}
+
+	/**
+	 * @return the album
+	 */
+	public String getAlbum() {
+		return album;
+	}
+
+	/**
+	 * @param album the album to set
+	 */
+	public void setAlbum(String album) {
+		this.album = album;
+	}
+
+	/**
+	 * @return the date
+	 */
+	public String getDate() {
+		return date;
+	}
+
+	/**
+	 * @param date the date to set
+	 */
+	public void setDate(String date) {
+		this.date = date;
+	}
+
+	/**
+	 * @return the comment
+	 */
+	public String getComment() {
+		return comment;
+	}
+
+	/**
+	 * @param comment the comment to set
+	 */
+	public void setComment(String comment) {
+		this.comment = comment;
+	}
+
+	/**
+	 * @return the catnr
+	 */
+	public String getCatnr() {
+		return catnr;
+	}
+
+	/**
+	 * @param catnr the catnr to set
+	 */
+	public void setCatnr(String catnr) {
+		this.catnr = catnr;
+	}
+
+	/**
+	 * @return the codec
+	 */
+	public String getCodec() {
+		return codec;
+	}
+
+	/**
+	 * @param codec the codec to set
+	 */
+	public void setCodec(String codec) {
+		this.codec = codec;
+	}
+
+	/**
+	 * @return the publisher
+	 */
+	public String getPublisher() {
+		return publisher;
+	}
+
+	/**
+	 * @param publisher the publisher to set
+	 */
+	public void setPublisher(String publisher) {
+		this.publisher = publisher;
+	}
+
+	/**
+	 * @return the discogs_release_id
+	 */
+	public String getDiscogs_release_id() {
+		return discogs_release_id;
+	}
+
+	/**
+	 * @param discogs_release_id the discogs_release_id to set
+	 */
+	public void setDiscogs_release_id(String discogs_release_id) {
+		this.discogs_release_id = discogs_release_id;
+	}
+
+	/**
+	 * @return the style
+	 */
+	public String getStyle() {
+		return style;
+	}
+
+	/**
+	 * @param style the style to set
+	 */
+	public void setStyle(String style) {
+		this.style = style;
+	}
+
+	/**
+	 * @return the genre
+	 */
+	public String getGenre() {
+		return genre;
+	}
+
+	/**
+	 * @param genre the genre to set
+	 */
+	public void setGenre(String genre) {
+		this.genre = genre;
+	}
+
+	/**
+	 * @return the bpm
+	 */
+	public float getBpm() {
+		return bpm;
+	}
+
+	/**
+	 * @param bpm the bpm to set
+	 */
+	public void setBpm(float bpm) {
+		this.bpm = bpm;
+	}
+
+	/**
+	 * @return the rating
+	 */
+	public int getRating() {
+		return rating;
+	}
+
+	/**
+	 * @param rating the rating to set
+	 */
+	public void setRating(int rating) {
+		this.rating = rating;
+	}
+
+	/**
+	 * @return the key_start
+	 */
+	public String getKey_start() {
+		return key_start;
+	}
+
+	/**
+	 * @param key_start the key_start to set
+	 */
+	public void setKey_start(String key_start) {
+		this.key_start = key_start;
+	}
+
+	/**
+	 * @return the duration
+	 */
+	public double getDuration() {
+		return duration;
+	}
+
+	/**
+	 * @param duration the duration to set
+	 */
+	public void setDuration(double duration) {
+		this.duration = duration;
+	}
+
+	/**
+	 * @return the filesize
+	 */
+	public int getFilesize() {
+		return filesize;
+	}
+
+	/**
+	 * @param filesize the filesize to set
+	 */
+	public void setFilesize(int filesize) {
+		this.filesize = filesize;
+	}
+
+	/**
+	 * @return the albumReplayGain
+	 */
+	public float getAlbumReplayGain() {
+		return albumReplayGain;
+	}
+
+	/**
+	 * @param albumReplayGain the albumReplayGain to set
+	 */
+	public void setAlbumReplayGain(float albumReplayGain) {
+		this.albumReplayGain = albumReplayGain;
+	}
+
+	/**
+	 * @return the trackReplayGain
+	 */
+	public float getTrackReplayGain() {
+		return trackReplayGain;
+	}
+
+	/**
+	 * @param trackReplayGain the trackReplayGain to set
+	 */
+	public void setTrackReplayGain(float trackReplayGain) {
+		this.trackReplayGain = trackReplayGain;
+	}
+
+	/**
+	 * @return the albumReplayPeak
+	 */
+	public float getAlbumReplayPeak() {
+		return albumReplayPeak;
+	}
+
+	/**
+	 * @param albumReplayPeak the albumReplayPeak to set
+	 */
+	public void setAlbumReplayPeak(float albumReplayPeak) {
+		this.albumReplayPeak = albumReplayPeak;
+	}
+
+	/**
+	 * @return the trackReplayPeak
+	 */
+	public float getTrackReplayPeak() {
+		return trackReplayPeak;
+	}
+
+	/**
+	 * @param trackReplayPeak the trackReplayPeak to set
+	 */
+	public void setTrackReplayPeak(float trackReplayPeak) {
+		this.trackReplayPeak = trackReplayPeak;
+	}
+
+	/**
+	 * @return the properties
+	 */
+	public HashMap<String, ArrayList<String>> getProperties() {
+		return properties;
+	}
+
+	/**
+	 * @param properties the properties to set
+	 */
+	public void setProperties(HashMap<String, ArrayList<String>> properties) {
+		this.properties = properties;
 	}
 }
