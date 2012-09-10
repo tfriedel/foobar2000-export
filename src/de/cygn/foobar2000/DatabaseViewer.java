@@ -9,18 +9,18 @@ import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.logger.LocalLog;
 import com.j256.ormlite.stmt.QueryBuilder;
 import com.j256.ormlite.support.ConnectionSource;
-import com.j256.ormlite.table.TableUtils;
+import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JTree;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
@@ -36,12 +36,17 @@ public class DatabaseViewer extends javax.swing.JFrame {
 	 */
 	public DatabaseViewer() {
 		initComponents();
+		columnIdentifiers = new String[]{"#", "Artist", "Title", "Album", "CatNr", "Label", "Year", "Length", "Key", "BPM", "Rating", "kbit", "Codec", "Path"};
+		for (int i = 0; i < columnIdentifiers.length; i++) {
+			columnNr.put(columnIdentifiers[i], i);
+		}
 
 		//tableModel = new javax.swing.table.DefaultTableModel();
 		tableModel = new javax.swing.table.DefaultTableModel() {
 			@Override
 			public Class<?> getColumnClass(int columnIndex) {
-				if (columnIndex == 0) {
+				if (columnIndex == columnNr.get("#")
+						|| columnIndex == columnNr.get("Length")) {
 					return Integer.class;
 				} else {
 					return Object.class;
@@ -50,16 +55,35 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		};
 
 		jTable1.setModel(tableModel);
-		String[] columnIdentifiers = new String[]{"#", "Artist", "Title", "Album", "CatNr", "Label", "Year", "Length", "Key", "BPM", "Rating", "kbit", "Codec", "Path"};
-		int[] preferredWidths = new int[]{35, 148, 211, 140, 47, 84, 40, 51, 37, 35, 52, 32, 40, 359};
+		int[] preferredWidths = new int[]{35, 108, 151, 140, 47, 84, 40, 51, 37, 40, 52, 32, 40, 359};
 		tableModel.setColumnIdentifiers(columnIdentifiers);
 		for (int i = 0; i < preferredWidths.length; i++) {
 			jTable1.getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
 		}
+		jTable1.getColumnModel().getColumn(columnNr.get("Rating")).setCellRenderer(new DefaultTableCellRenderer() {
+			String[] stars = new String[]{"\u25CC\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CF"};
+
+			public void setValue(Object value) {
+				int rating = (Integer) value;
+				rating = Math.min(5, rating);
+				rating = Math.max(0, rating);
+				assert 0 <= rating && rating <= 5;
+				setText(stars[rating]);
+			}
+		});
+
+		jTable1.getColumnModel().getColumn(columnNr.get("Length")).setCellRenderer(new DefaultTableCellRenderer() {
+			public void setValue(Object value) {
+				int duration = (Integer) value;
+				setText(Utils.formatIntoHHMMSS(duration));
+			}
+		});
 
 		// build playlist tree
 		TreeModel playlistTreeModel = Playlists.readPlaylists(new File("c:\\Users\\Thomas\\Dropbox\\PortableApps\\foobar2000\\"));
 		jTree1.setModel(playlistTreeModel);
+
+		// @todo check resizing properties of table
 	}
 
 	/**
@@ -80,6 +104,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
         jScrollPane2 = new javax.swing.JScrollPane();
         jTree1 = new javax.swing.JTree();
         jTextField1 = new javax.swing.JTextField();
+        jButton2 = new javax.swing.JButton();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         openMenuItem = new javax.swing.JMenuItem();
@@ -106,7 +131,12 @@ public class DatabaseViewer extends javax.swing.JFrame {
 
         jTable1.setAutoCreateRowSorter(true);
         jTable1.setModel(tableModel);
-        jTable1.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        jTable1.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_LAST_COLUMN);
+        jTable1.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTable1MouseClicked(evt);
+            }
+        });
         jScrollPane1.setViewportView(jTable1);
 
         queryField.setText("Jeff Mills");
@@ -153,6 +183,13 @@ public class DatabaseViewer extends javax.swing.JFrame {
         jScrollPane2.setViewportView(jTree1);
 
         jTextField1.setText("jTextField1");
+
+        jButton2.setText("Copy to Clipboard");
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -224,20 +261,26 @@ public class DatabaseViewer extends javax.swing.JFrame {
             .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 219, Short.MAX_VALUE)
+                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 219, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(jTextField1))
-                .add(18, 18, 18)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 12, Short.MAX_VALUE)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                        .add(jButton1)
-                        .add(252, 252, 252))
+                        .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 1005, Short.MAX_VALUE)
+                        .addContainerGap())
                     .add(layout.createSequentialGroup()
-                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
-                            .add(jScrollPane1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 999, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                .add(jLabel1)
-                                .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 236, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                        .addContainerGap())))
+                        .add(0, 0, Short.MAX_VALUE)
+                        .add(jButton2)
+                        .add(81, 81, 81)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
+                                .add(jButton1)
+                                .add(252, 252, 252))
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                    .add(jLabel1)
+                                    .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 236, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                                .addContainerGap())))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -249,12 +292,13 @@ public class DatabaseViewer extends javax.swing.JFrame {
                         .add(1, 1, 1)
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                             .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                            .add(jButton1)))
+                            .add(jButton1)
+                            .add(jButton2)))
                     .add(jTextField1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jScrollPane1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE))
+                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE)
+                    .add(jScrollPane1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
@@ -267,7 +311,6 @@ public class DatabaseViewer extends javax.swing.JFrame {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
 		try {
-			// TODO add your handling code here:
 			String databaseUrl = "jdbc:h2:mem:account";
 			databaseUrl = "jdbc:h2:tcp://localhost/~/test";
 			System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
@@ -302,9 +345,9 @@ public class DatabaseViewer extends javax.swing.JFrame {
 
     }//GEN-LAST:event_jButton1ActionPerformed
 
-private void addTrackToTable(Track track, int count) {
-	tableModel.addRow(new Object[]{Integer.valueOf(count), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int)track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track.getFilename()});
-}
+	private void addTrackToTable(Track track, int count) {
+		tableModel.addRow(new Object[]{Integer.valueOf(count), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track.getFilename()});
+	}
     private void jTree1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTree1MouseClicked
 		if (jTree1.getSelectionCount() > 0) {
 			TreePath tp = jTree1.getSelectionPath();
@@ -327,6 +370,37 @@ private void addTrackToTable(Track track, int count) {
 		}
     }//GEN-LAST:event_jTree1MouseClicked
 
+    private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
+		jTable1.getSelectedRow();
+    }//GEN-LAST:event_jTable1MouseClicked
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+		// copy files to clipboard
+		int[] rows = jTable1.getSelectedRows();
+		final ArrayList<File> files = new ArrayList<File>();
+		for (int row:rows) {
+			String filename = (String) tableModel.getValueAt(row, columnNr.get("Path"));
+			files.add(new File(filename));
+		}
+		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(
+				new Transferable() {
+					@Override
+					public DataFlavor[] getTransferDataFlavors() {
+						return new DataFlavor[]{DataFlavor.javaFileListFlavor};
+					}
+
+					@Override
+					public boolean isDataFlavorSupported(DataFlavor flavor) {
+						return DataFlavor.javaFileListFlavor.equals(flavor);
+					}
+
+					@Override
+					public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
+						return files;
+					}
+				}, null);
+    }//GEN-LAST:event_jButton2ActionPerformed
+
 	/**
 	 * @param args the command line arguments
 	 */
@@ -337,12 +411,15 @@ private void addTrackToTable(Track track, int count) {
 		 * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
 		 */
 		try {
-			for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-				if ("Nimbus".equals(info.getName())) {
-					javax.swing.UIManager.setLookAndFeel(info.getClassName());
-					break;
-				}
-			}
+			javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+			/*
+			 for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+			 if ("Nimbus".equals(info.getName())) {
+			 javax.swing.UIManager.setLookAndFeel(info.getClassName());
+			 break;
+			 }
+			 }
+			 */
 		} catch (ClassNotFoundException ex) {
 			java.util.logging.Logger.getLogger(DatabaseViewer.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
 		} catch (InstantiationException ex) {
@@ -372,6 +449,7 @@ private void addTrackToTable(Track track, int count) {
     private javax.swing.JMenu fileMenu;
     private javax.swing.JMenu helpMenu;
     private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
@@ -386,4 +464,6 @@ private void addTrackToTable(Track track, int count) {
     private javax.swing.JMenuItem saveMenuItem;
     private javax.swing.table.DefaultTableModel tableModel;
     // End of variables declaration//GEN-END:variables
+	private HashMap<String, Integer> columnNr = new HashMap<>();
+	private String[] columnIdentifiers;
 }
