@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -279,7 +280,7 @@ public class FPLPlaylist {
 		return tracklist;
 	}
 
-	public static void main(String argc[]) throws FileNotFoundException, IOException {
+	public static void main0(String argc[]) throws FileNotFoundException, IOException {
 		if (argc.length < 2) {
 			System.out.println("usage: foobarConverter input.fpl output.m3u");
 			System.exit(-1);
@@ -291,7 +292,13 @@ public class FPLPlaylist {
 		saveM3U(tracklist, new File(m3u_filename));
 	}
 
-	private static void saveDatabase(ArrayList<Track> tracklist) throws SQLException {
+	public static void main(String[] args) throws FileNotFoundException, IOException, SQLException {
+		String foobarDatabase = "c:\\users\\thomas\\dropbox\\portableapps\\foobar2000\\database.dat";
+		ArrayList<Track> tracklist = readPlaylist(new File(foobarDatabase));
+		saveDatabase(tracklist);
+	}
+	
+	private static void saveDatabase(final ArrayList<Track> tracklist) throws SQLException {
 		String databaseUrl = "jdbc:h2:mem:account";
 		databaseUrl = "jdbc:h2:tcp://localhost/~/test";
 		System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
@@ -299,20 +306,28 @@ public class FPLPlaylist {
 		ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl, "sa", "");
 		//Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/test","sa","");
 		// instantiate the dao
-		Dao<Track, String> trackDao =
+		final Dao<Track, String> trackDao =
 				DaoManager.createDao(connectionSource, Track.class);
 
-		// if you need to create the 'accounts' table make this call
+		TableUtils.dropTable(connectionSource, Track.class, true);
 		TableUtils.createTable(connectionSource, Track.class);
-
-
-		for (Track track : tracklist) {
-			trackDao.create(track);
+		try {
+			trackDao.callBatchTasks(new Callable<String>() {
+				public String call() throws Exception {
+					for (Track track : tracklist) {
+						trackDao.create(track);
+					}
+					return "";
+				}
+			});
+			/*
+			for (Track track : tracklist) {
+				trackDao.create(track);
+			}
+			*/
+		} catch (Exception ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
 		}
-
-		// retrieve the account from the database by its id field (name)
-		//Account account2 = accountDao.queryForId("Jim Coakley");
-		//System.out.println("Account: " + account2.getName());
 
 		// close the connection source
 		connectionSource.close();
