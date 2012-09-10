@@ -433,6 +433,8 @@ public class Track {
 	 */
 	public void setKey_start(String key_start) {
 		this.key_start = key_start;
+		if (this.key_start.startsWith("0"))
+			this.key_start = this.key_start.substring(1);
 	}
 
 	/**
