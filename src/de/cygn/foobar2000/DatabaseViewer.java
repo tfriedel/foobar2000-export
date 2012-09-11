@@ -8,6 +8,7 @@ import com.j256.ormlite.dao.DaoManager;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.logger.LocalLog;
 import com.j256.ormlite.stmt.QueryBuilder;
+import com.j256.ormlite.stmt.Where;
 import com.j256.ormlite.support.ConnectionSource;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
@@ -17,10 +18,16 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFileChooser;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
@@ -36,6 +43,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 	 */
 	public DatabaseViewer() {
 		initComponents();
+		highlightedRows = new TreeSet<Integer>();
 		columnIdentifiers = new String[]{"#", "Artist", "Title", "Album", "CatNr", "Label", "Year", "Length", "Key", "BPM", "Rating", "kbit", "Codec", "Path"};
 		for (int i = 0; i < columnIdentifiers.length; i++) {
 			columnNr.put(columnIdentifiers[i], i);
@@ -43,6 +51,11 @@ public class DatabaseViewer extends javax.swing.JFrame {
 
 		//tableModel = new javax.swing.table.DefaultTableModel();
 		tableModel = new javax.swing.table.DefaultTableModel() {
+			@Override
+			public boolean isCellEditable(int col, int row) {
+				return false;
+			}
+
 			@Override
 			public Class<?> getColumnClass(int columnIndex) {
 				if (columnIndex == columnNr.get("#")
@@ -60,7 +73,14 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		for (int i = 0; i < preferredWidths.length; i++) {
 			jTable1.getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
 		}
-		jTable1.getColumnModel().getColumn(columnNr.get("Rating")).setCellRenderer(new DefaultTableCellRenderer() {
+		TableCellRenderer renderer = new ColoredTableCellRenderer(highlightedRows);
+		//jTable1.setDefaultRenderer(Object.class, renderer);
+		Enumeration<TableColumn> columns = jTable1.getColumnModel().getColumns();
+		while (columns.hasMoreElements()) {
+			TableColumn col = columns.nextElement();
+			col.setCellRenderer(renderer);
+		}
+		jTable1.getColumnModel().getColumn(columnNr.get("Rating")).setCellRenderer(new ColoredTableCellRenderer(highlightedRows) {
 			String[] stars = new String[]{"\u25CC\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CF"};
 
 			public void setValue(Object value) {
@@ -71,8 +91,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 				setText(stars[rating]);
 			}
 		});
-
-		jTable1.getColumnModel().getColumn(columnNr.get("Length")).setCellRenderer(new DefaultTableCellRenderer() {
+		jTable1.getColumnModel().getColumn(columnNr.get("Length")).setCellRenderer(new ColoredTableCellRenderer(highlightedRows) {
 			public void setValue(Object value) {
 				int duration = (Integer) value;
 				setText(Utils.formatIntoHHMMSS(duration));
@@ -84,6 +103,51 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		jTree1.setModel(playlistTreeModel);
 
 		// @todo check resizing properties of table
+	}
+
+	private void searchDatabase() {
+		try {
+			String databaseUrl = "jdbc:h2:mem:account";
+			databaseUrl = "jdbc:h2:tcp://localhost/~/test";
+			System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
+			// create a connection source to our database
+			ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl, "sa", "");
+			//Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/test","sa","");
+			// instantiate the dao
+			Dao<Track, String> trackDao =
+					DaoManager.createDao(connectionSource, Track.class);
+
+			int count = 1;
+			Track queryTrack = new Track();
+			QueryBuilder<Track, String> queryBuilder = trackDao.queryBuilder();
+			String[] keywords = queryField.getText().toLowerCase().split(" ");
+			Where<Track, String> where = queryBuilder.where();
+			StringBuilder where_string_builder = new StringBuilder();
+			for (String word : keywords) {
+				where_string_builder.append(
+						"(lower(`artist`) LIKE '%" + word + "%' OR lower(`title`) LIKE '%" + word + "%' )");
+				where_string_builder.append(" AND ");
+			}
+			where_string_builder.delete(where_string_builder.length() - 5, where_string_builder.length() - 1);
+			where.raw(where_string_builder.toString());
+			System.out.println(queryBuilder.prepare());
+			CloseableIterator<Track> iterator = trackDao.iterator(queryBuilder.prepare());
+			tableModel.setRowCount(0);
+			try {
+				while (iterator.hasNext() && count++ <= 1000000) {
+					Track track = iterator.next();
+					addTrackToTable(track, count);
+				}
+			} finally {
+				iterator.close();
+			}
+
+			// close the connection source
+			connectionSource.close();
+		} catch (SQLException ex) {
+			Logger.getLogger(DatabaseViewer.class.getName()).log(Level.SEVERE, null, ex);
+		}
+
 	}
 
 	/**
@@ -103,8 +167,10 @@ public class DatabaseViewer extends javax.swing.JFrame {
         jLabel1 = new javax.swing.JLabel();
         jScrollPane2 = new javax.swing.JScrollPane();
         jTree1 = new javax.swing.JTree();
-        jTextField1 = new javax.swing.JTextField();
+        statusPanel = new javax.swing.JPanel();
+        statusLabel = new javax.swing.JLabel();
         jButton2 = new javax.swing.JButton();
+        currentTrackTextField = new javax.swing.JTextField();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         openMenuItem = new javax.swing.JMenuItem();
@@ -140,41 +206,22 @@ public class DatabaseViewer extends javax.swing.JFrame {
         jScrollPane1.setViewportView(jTable1);
 
         queryField.setText("Jeff Mills");
+        queryField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                queryFieldActionPerformed(evt);
+            }
+        });
 
         jLabel1.setText("Query:");
 
-        javax.swing.tree.DefaultMutableTreeNode treeNode1 = new javax.swing.tree.DefaultMutableTreeNode("kamikaze");
-        javax.swing.tree.DefaultMutableTreeNode treeNode2 = new javax.swing.tree.DefaultMutableTreeNode("colors");
-        javax.swing.tree.DefaultMutableTreeNode treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("blue");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("violet");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("red");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("yellow");
-        treeNode2.add(treeNode3);
-        treeNode1.add(treeNode2);
-        treeNode2 = new javax.swing.tree.DefaultMutableTreeNode("sports");
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("basketball");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("soccer");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("football");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("hockey");
-        treeNode2.add(treeNode3);
-        treeNode1.add(treeNode2);
-        treeNode2 = new javax.swing.tree.DefaultMutableTreeNode("food");
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("hot dogs");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("pizza");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("ravioli");
-        treeNode2.add(treeNode3);
-        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("bananas");
+        javax.swing.tree.DefaultMutableTreeNode treeNode1 = new javax.swing.tree.DefaultMutableTreeNode("Playlists");
+        javax.swing.tree.DefaultMutableTreeNode treeNode2 = new javax.swing.tree.DefaultMutableTreeNode("Default");
+        javax.swing.tree.DefaultMutableTreeNode treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("bla");
         treeNode2.add(treeNode3);
         treeNode1.add(treeNode2);
         jTree1.setModel(new javax.swing.tree.DefaultTreeModel(treeNode1));
+        jTree1.setRootVisible(false);
+        jTree1.setShowsRootHandles(true);
         jTree1.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 jTree1MouseClicked(evt);
@@ -182,9 +229,16 @@ public class DatabaseViewer extends javax.swing.JFrame {
         });
         jScrollPane2.setViewportView(jTree1);
 
-        jTextField1.setText("jTextField1");
+        statusPanel.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.LOWERED));
+        statusPanel.setFocusable(false);
+        statusPanel.setPreferredSize(new java.awt.Dimension(0, 16));
+        statusPanel.setLayout(new javax.swing.BoxLayout(statusPanel, javax.swing.BoxLayout.LINE_AXIS));
 
-        jButton2.setText("Copy to Clipboard");
+        statusLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        statusLabel.setVerticalAlignment(javax.swing.SwingConstants.TOP);
+        statusPanel.add(statusLabel);
+
+        jButton2.setText("Search in key");
         jButton2.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton2ActionPerformed(evt);
@@ -225,8 +279,14 @@ public class DatabaseViewer extends javax.swing.JFrame {
         cutMenuItem.setText("Cut");
         editMenu.add(cutMenuItem);
 
+        copyMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F3, 0));
         copyMenuItem.setMnemonic('y');
         copyMenuItem.setText("Copy");
+        copyMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                copyMenuItemActionPerformed(evt);
+            }
+        });
         editMenu.add(copyMenuItem);
 
         pasteMenuItem.setMnemonic('p');
@@ -258,20 +318,15 @@ public class DatabaseViewer extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                .addContainerGap()
+            .add(layout.createSequentialGroup()
+                .add(jScrollPane2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 219, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 219, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jTextField1))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 12, Short.MAX_VALUE)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                        .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 1005, Short.MAX_VALUE)
-                        .addContainerGap())
                     .add(layout.createSequentialGroup()
-                        .add(0, 0, Short.MAX_VALUE)
+                        .add(currentTrackTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 350, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 229, Short.MAX_VALUE)
                         .add(jButton2)
-                        .add(81, 81, 81)
+                        .add(38, 38, 38)
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                             .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
                                 .add(jButton1)
@@ -280,26 +335,27 @@ public class DatabaseViewer extends javax.swing.JFrame {
                                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                                     .add(jLabel1)
                                     .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 236, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                                .addContainerGap())))))
+                                .addContainerGap())))
+                    .add(jScrollPane1)))
+            .add(statusPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(layout.createSequentialGroup()
+            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(layout.createSequentialGroup()
-                        .add(jLabel1)
-                        .add(1, 1, 1)
-                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                            .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                            .add(jButton1)
-                            .add(jButton2)))
-                    .add(jTextField1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .add(jLabel1)
+                .add(4, 4, 4)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jButton1)
+                    .add(jButton2)
+                    .add(currentTrackTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE)
+                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 284, Short.MAX_VALUE)
                     .add(jScrollPane1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
-                .addContainerGap())
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(statusPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
         );
 
         pack();
@@ -310,78 +366,48 @@ public class DatabaseViewer extends javax.swing.JFrame {
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-		try {
-			String databaseUrl = "jdbc:h2:mem:account";
-			databaseUrl = "jdbc:h2:tcp://localhost/~/test";
-			System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
-			// create a connection source to our database
-			ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl, "sa", "");
-			//Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/test","sa","");
-			// instantiate the dao
-			Dao<Track, String> trackDao =
-					DaoManager.createDao(connectionSource, Track.class);
-
-			int count = 1;
-			Track queryTrack = new Track();
-			queryTrack.setArtist("Phace");
-			QueryBuilder<Track, String> queryBuilder = trackDao.queryBuilder();
-			queryBuilder.where().like("artist", queryField.getText() + "%");
-			CloseableIterator<Track> iterator = trackDao.iterator(queryBuilder.prepare());
-			tableModel.setRowCount(0);
-			try {
-				while (iterator.hasNext() && count++ <= 1000000) {
-					Track track = iterator.next();
-					addTrackToTable(track, count);
-				}
-			} finally {
-				iterator.close();
-			}
-
-			// close the connection source
-			connectionSource.close();
-		} catch (SQLException ex) {
-			Logger.getLogger(DatabaseViewer.class.getName()).log(Level.SEVERE, null, ex);
-		}
-
+		searchDatabase();
     }//GEN-LAST:event_jButton1ActionPerformed
 
 	private void addTrackToTable(Track track, int count) {
 		tableModel.addRow(new Object[]{Integer.valueOf(count), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track.getFilename()});
 	}
     private void jTree1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTree1MouseClicked
-		if (jTree1.getSelectionCount() > 0) {
-			TreePath tp = jTree1.getSelectionPath();
-			Object object = tp.getLastPathComponent();
-			if (object instanceof DefaultMutableTreeNode) {
-				DefaultMutableTreeNode node = (DefaultMutableTreeNode) object;
-				if (node.getUserObject() instanceof Playlist) {
-					Playlist playlist = (Playlist) node.getUserObject();
-					jTextField1.setText(playlist.toString());
-					tableModel.setRowCount(0);
-					int count = 1;
-					if (playlist.getTracks() != null) {
-						for (Track track : playlist.getTracks()) {
-							addTrackToTable(track, count);
-							count++;
-						}
-					}
-				}
-			}
-		}
+		loadSelectedPlaylist();
     }//GEN-LAST:event_jTree1MouseClicked
 
     private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
 		jTable1.getSelectedRow();
     }//GEN-LAST:event_jTable1MouseClicked
 
+	private void updateStatusBar(String text) {
+		statusLabel.setText(text);
+	}
+
+    private void copyMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyMenuItemActionPerformed
+		copySelectedTracksToClipboard();
+    }//GEN-LAST:event_copyMenuItemActionPerformed
+
+    private void queryFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_queryFieldActionPerformed
+		searchDatabase();
+    }//GEN-LAST:event_queryFieldActionPerformed
+
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-		// copy files to clipboard
+		// TODO add your handling code here:
+		// highlight tracks which are in compatible key
+		searchCompatibleKey();
+    }//GEN-LAST:event_jButton2ActionPerformed
+
+	private void copySelectedTracksToClipboard() {
 		int[] rows = jTable1.getSelectedRows();
 		final ArrayList<File> files = new ArrayList<File>();
-		for (int row:rows) {
+		for (int row : rows) {
+			row = jTable1.convertRowIndexToModel(row);
 			String filename = (String) tableModel.getValueAt(row, columnNr.get("Path"));
 			files.add(new File(filename));
 		}
+		// @todo handle case if no file is selected
+		updateStatusBar(String.format("%d tracks added to clipboard.", files.size()));
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(
 				new Transferable() {
 					@Override
@@ -399,7 +425,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 						return files;
 					}
 				}, null);
-    }//GEN-LAST:event_jButton2ActionPerformed
+	}
 
 	/**
 	 * @param args the command line arguments
@@ -442,6 +468,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JMenuItem contentsMenuItem;
     private javax.swing.JMenuItem copyMenuItem;
+    private javax.swing.JTextField currentTrackTextField;
     private javax.swing.JMenuItem cutMenuItem;
     private javax.swing.JMenuItem deleteMenuItem;
     private javax.swing.JMenu editMenu;
@@ -454,7 +481,6 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTable jTable1;
-    private javax.swing.JTextField jTextField1;
     private javax.swing.JTree jTree1;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenuItem openMenuItem;
@@ -462,8 +488,61 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private javax.swing.JTextField queryField;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JMenuItem saveMenuItem;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JPanel statusPanel;
     private javax.swing.table.DefaultTableModel tableModel;
     // End of variables declaration//GEN-END:variables
 	private HashMap<String, Integer> columnNr = new HashMap<>();
 	private String[] columnIdentifiers;
+	private Set<Integer> highlightedRows;
+
+	private void searchCompatibleKey() {
+		int row = jTable1.convertRowIndexToModel(jTable1.getSelectedRow());
+		int key_column = columnNr.get("Key");
+		int bpm_column = columnNr.get("BPM");
+		String key = (String) tableModel.getValueAt(row, key_column);
+		float bpm = (Float) tableModel.getValueAt(row, bpm_column);
+		StringBuilder sb = new StringBuilder();
+		sb.append((String) tableModel.getValueAt(row, columnNr.get("Artist")));
+		sb.append(" - ");
+		sb.append((String) tableModel.getValueAt(row, columnNr.get("Title")));
+		sb.append(" [");
+		sb.append(key);
+		sb.append(", ");
+		sb.append(Float.toString(bpm));;
+		sb.append("]");
+		currentTrackTextField.setText(sb.toString());
+		highlightedRows.clear();
+		for (int i = 0; i < tableModel.getRowCount(); i++) {
+			String key_b = (String) tableModel.getValueAt(i, key_column);
+			float bpm_b = (Float) tableModel.getValueAt(i, bpm_column);
+			if (KeyCompatibility.compatible(key, key_b, bpm, bpm_b)) {
+				highlightedRows.add(i);
+			}
+		}
+		jTable1.repaint();
+	}
+
+	private void loadSelectedPlaylist() {
+		if (jTree1.getSelectionCount() > 0) {
+			highlightedRows.clear();
+			TreePath tp = jTree1.getSelectionPath();
+			Object object = tp.getLastPathComponent();
+			if (object instanceof DefaultMutableTreeNode) {
+				DefaultMutableTreeNode node = (DefaultMutableTreeNode) object;
+				if (node.getUserObject() instanceof Playlist) {
+					Playlist playlist = (Playlist) node.getUserObject();
+					updateStatusBar(playlist.toString());
+					tableModel.setRowCount(0);
+					int count = 1;
+					if (playlist.getTracks() != null) {
+						for (Track track : playlist.getTracks()) {
+							addTrackToTable(track, count);
+							count++;
+						}
+					}
+				}
+			}
+		}
+	}
 }

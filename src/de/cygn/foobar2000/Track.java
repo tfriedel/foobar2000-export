@@ -15,11 +15,11 @@ public class Track {
 	private String filename;
 	@DatabaseField
 	private long filetime_in_millis;
-	@DatabaseField
+	@DatabaseField (index=true)
 	private String artist;
 	@DatabaseField
 	private String album_artist;
-	@DatabaseField
+	@DatabaseField (index=true)
 	private String title;
 	@DatabaseField
 	private String tracknumber;
