@@ -67,7 +67,7 @@ public class Track {
 	private HashMap<String, ArrayList<String>> properties;
 
 	public String toString() {
-		return String.format("%s, %s", getFilename(), getProperties());
+		return getFilename();
 	}
 
 	public Track() {
