@@ -159,8 +159,14 @@ public class KeyCompatibility {
 		}
 		assert a.length() == 2 || a.length() == 3;
 		assert b.length() == 2 || b.length() == 3;
-		float a_hz = normalizedHz(bpm_a, a);
-		float b_hz = normalizedHz(bpm_b, b);
+		float a_hz;
+		float b_hz;
+		try {
+			a_hz = normalizedHz(bpm_a, a);
+			b_hz = normalizedHz(bpm_b, b);
+		} catch (NullPointerException e) {
+			return false;
+		}
 
 		int a_nr = Integer.valueOf(a.substring(0, a.length() - 1));
 		int b_nr = Integer.valueOf(b.substring(0, b.length() - 1));
