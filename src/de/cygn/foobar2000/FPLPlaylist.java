@@ -52,7 +52,9 @@ class StringStore {
 }
 
 public class FPLPlaylist {
-
+	
+	
+	private static Logger logger = Logger.getLogger(FPLPlaylist.class.getName());
 	private static int[] export_fpl_magic = {-1852006175, 1115110648, -868537211, -221052652};
 	private static int[] intern_fpl_magic = {-614910208, 1314278724, 717632640, -1180268102};
 	private static int[] database_fpl_magic = {-1854960391, 1262355587, -545234278, -2121477978};
@@ -86,6 +88,8 @@ public class FPLPlaylist {
 	}
 
 	public static void decodePlaylist(ByteBuffer mb, int number_of_songs, Map<Integer, String> string_store, int string_table_offset, ArrayList<Track> tracklist, int start_track) throws IOException {
+		//logger.setLevel(Level.ALL);
+		//logger.getParent().getHandlers()[0].setLevel(Level.ALL);
 		for (int i = 0; i < number_of_songs; i++) {
 			int fileExists = mb.getInt(); //  4 byte integer, if this is 0, the file doesn't exist
 
@@ -99,26 +103,23 @@ public class FPLPlaylist {
 				tracklist.add(track);
 			}
 
-			mb.getInt(); //  4 bytes, always 0?
-
-			// @todo open hiphop playlist, first track there doesn't exist and produces problems
+			int unknown1 = mb.getInt(); //  4 bytes, always 0?
 			if (fileExists != 0) {
 				track.setFilesize(mb.getInt());
-				mb.getInt(); //  4 bytes, always 0?
-				mb.getDouble(); // 8 bytes, unknown meaning
+				int unknown2 = mb.getInt(); //  4 bytes, always 0?
+				double unknown3 = mb.getDouble(); // 8 bytes, unknown meaning
 				track.setDuration(mb.getDouble()); //  8 byte floating point value representing duration in seconds
 				track.setAlbumReplayGain(mb.getFloat()); // 4 bytes, probably floating point album replaygain value (7AC4 = -1.00 if none)
 				track.setTrackReplayGain(mb.getFloat()); // 4 byte floating point representing track replaygain value (7AC4 = -1.00 if none)
 				track.setAlbumReplayPeak(mb.getFloat()); //4 bytes, probably representing an album peak value (80BF = 1.00 if none)
 				track.setTrackReplayPeak(mb.getFloat());
 
-
 				// key/value store starts here. read the number of items
 				int total_keys = mb.getInt();
 				int nr_of_non_interleaved_keys = mb.getInt();
 				int nr_of_interleaved_keys = mb.getInt();
 				total_keys = nr_of_interleaved_keys + nr_of_non_interleaved_keys;
-				int unknown = mb.getInt(); // unknown ?
+				int unknown4 = mb.getInt(); // unknown ?
 
 				// we will establish a mapping key -> <list of values>
 				ArrayList<String> keys = new ArrayList<>();
@@ -280,7 +281,7 @@ public class FPLPlaylist {
 		return tracklist;
 	}
 
-	public static void main0(String argc[]) throws FileNotFoundException, IOException {
+	public static void main(String argc[]) throws FileNotFoundException, IOException {
 		if (argc.length < 2) {
 			System.out.println("usage: foobarConverter input.fpl output.m3u");
 			System.exit(-1);
@@ -289,10 +290,10 @@ public class FPLPlaylist {
 		String m3u_filename = argc[1];
 		System.out.println("converting " + fpl_filename + " to " + m3u_filename);
 		ArrayList<Track> tracklist = readPlaylist(new File(fpl_filename));
-		saveM3U(tracklist, new File(m3u_filename));
+		//saveM3U(tracklist, new File(m3u_filename));
 	}
 
-	public static void main(String[] args) throws FileNotFoundException, IOException, SQLException {
+	public static void main0(String[] args) throws FileNotFoundException, IOException, SQLException {
 		String foobarDatabase = "c:\\users\\thomas\\dropbox\\portableapps\\foobar2000\\database.dat";
 		ArrayList<Track> tracklist = readPlaylist(new File(foobarDatabase));
 		saveDatabase(tracklist);
