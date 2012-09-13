@@ -2,6 +2,7 @@ package de.cygn.foobar2000;
 
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
+import com.j256.ormlite.field.DatabaseFieldConfig;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.logger.LocalLog;
 import com.j256.ormlite.support.ConnectionSource;
@@ -278,10 +279,12 @@ public class FPLPlaylist {
 			throw new Error("wrong FPL version!");
 			// @todo: make a guess by finding first string
 		}
+		ch.close();
+		f.close();
 		return tracklist;
 	}
 
-	public static void main(String argc[]) throws FileNotFoundException, IOException {
+	public static void main0(String argc[]) throws FileNotFoundException, IOException {
 		if (argc.length < 2) {
 			System.out.println("usage: foobarConverter input.fpl output.m3u");
 			System.exit(-1);
@@ -293,7 +296,7 @@ public class FPLPlaylist {
 		//saveM3U(tracklist, new File(m3u_filename));
 	}
 
-	public static void main0(String[] args) throws FileNotFoundException, IOException, SQLException {
+	public static void main(String[] args) throws FileNotFoundException, IOException, SQLException {
 		String foobarDatabase = "c:\\users\\thomas\\dropbox\\portableapps\\foobar2000\\database.dat";
 		ArrayList<Track> tracklist = readPlaylist(new File(foobarDatabase));
 		saveDatabase(tracklist);
@@ -329,7 +332,10 @@ public class FPLPlaylist {
 		} catch (Exception ex) {
 			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
 		}
-
+		// create full text index with H2 native
+		// CREATE ALIAS IF NOT EXISTS FT_INIT FOR "org.h2.fulltext.FullText.init";
+        // CALL FT_INIT();
+		// CALL FT_CREATE_INDEX('PUBLIC', 'TRACKS', 'ARTIST,TITLE,ALBUM,PUBLISHER,CATNR,DATE,KEY_START,STYLE,GENRE')
 		// close the connection source
 		connectionSource.close();
 	}

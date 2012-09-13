@@ -3,6 +3,7 @@ package de.cygn.foobar2000;
 import com.j256.ormlite.dao.CloseableIterator;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
+import com.j256.ormlite.dao.GenericRawResults;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.logger.LocalLog;
 import com.j256.ormlite.stmt.QueryBuilder;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
@@ -78,6 +80,13 @@ public class DatabaseViewer extends javax.swing.JFrame {
         currentTrackTextField = new javax.swing.JTextField();
         filterField = new javax.swing.JTextField();
         jCheckBox1 = new javax.swing.JCheckBox();
+        filterLabel = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jPanel1 = new javax.swing.JPanel();
+        jLabel3 = new javax.swing.JLabel();
+        minBPM = new javax.swing.JSpinner();
+        maxBPM = new javax.swing.JSpinner();
+        jLabel4 = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         openMenuItem = new javax.swing.JMenuItem();
@@ -147,12 +156,53 @@ public class DatabaseViewer extends javax.swing.JFrame {
             }
         });
 
-        jCheckBox1.setText("only in key");
+        currentTrackTextField.setBackground(new java.awt.Color(204, 255, 204));
+
+        jCheckBox1.setText("hide other");
         jCheckBox1.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 jCheckBox1StateChanged(evt);
             }
         });
+
+        filterLabel.setText("Filter:");
+
+        jLabel2.setText("current Track:");
+
+        jLabel3.setText("Min BPM");
+
+        minBPM.setModel(new javax.swing.SpinnerNumberModel(0, 0, 250, 5));
+
+        maxBPM.setModel(new javax.swing.SpinnerNumberModel(200, 0, 250, 5));
+
+        jLabel4.setText("Max BPM");
+
+        org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jLabel3)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(minBPM, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 50, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .add(jLabel4)
+                .add(1, 1, 1)
+                .add(maxBPM, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 50, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(minBPM, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(maxBPM, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jLabel3)
+                    .add(jLabel4))
+                .addContainerGap())
+        );
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -228,46 +278,58 @@ public class DatabaseViewer extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(jScrollPane2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 219, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jCheckBox1))
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel2))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jScrollPane1)
                     .add(layout.createSequentialGroup()
-                        .add(currentTrackTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 350, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                        .add(filterField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 142, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 77, Short.MAX_VALUE)
-                        .add(jButton2)
-                        .add(38, 38, 38)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                            .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(layout.createSequentialGroup()
+                                .add(currentTrackTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 286, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                .add(42, 42, 42)
+                                .add(filterLabel)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(filterField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 142, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
+                            .add(layout.createSequentialGroup()
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(jButton2)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(jCheckBox1)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 51, Short.MAX_VALUE)
                                 .add(jButton1)
                                 .add(252, 252, 252))
-                            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
+                            .add(layout.createSequentialGroup()
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                                     .add(jLabel1)
                                     .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 236, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                                .addContainerGap())))
-                    .add(jScrollPane1)))
+                                .addContainerGap())))))
             .add(statusPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                .addContainerGap()
-                .add(jLabel1)
-                .add(4, 4, 4)
+                .add(23, 23, 23)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jLabel1)
+                    .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(queryField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(jButton1)
-                    .add(jButton2)
                     .add(currentTrackTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(filterField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jCheckBox1))
+                    .add(jLabel2)
+                    .add(filterLabel)
+                    .add(jCheckBox1)
+                    .add(jButton2))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 284, Short.MAX_VALUE)
+                    .add(jScrollPane2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 242, Short.MAX_VALUE)
                     .add(jScrollPane1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(statusPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
@@ -279,32 +341,32 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
 		System.exit(0);
     }//GEN-LAST:event_exitMenuItemActionPerformed
-	
+
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
 		searchDatabase();
     }//GEN-LAST:event_jButton1ActionPerformed
-	
+
     private void jTree1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTree1MouseClicked
 		loadSelectedPlaylist();
     }//GEN-LAST:event_jTree1MouseClicked
-	
+
     private void copyMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyMenuItemActionPerformed
 		copySelectedTracksToClipboard();
     }//GEN-LAST:event_copyMenuItemActionPerformed
-	
+
     private void queryFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_queryFieldActionPerformed
 		searchDatabase();
     }//GEN-LAST:event_queryFieldActionPerformed
-	
+
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
 		// highlight tracks which are in compatible key
 		searchCompatibleKey();
     }//GEN-LAST:event_jButton2ActionPerformed
-	
+
     private void jCheckBox1StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jCheckBox1StateChanged
 		sorter.sort();
     }//GEN-LAST:event_jCheckBox1StateChanged
-	
+
 	private void playlistTableMouseDoubleClicked(java.awt.event.MouseEvent evt) {
 		updateCurrentTrack(playlistTable.getSelectedRow());
 	}
@@ -357,15 +419,22 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JTextField filterField;
+    private javax.swing.JLabel filterLabel;
     private javax.swing.JMenu helpMenu;
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JCheckBox jCheckBox1;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTree jTree1;
+    private javax.swing.JSpinner maxBPM;
     private javax.swing.JMenuBar menuBar;
+    private javax.swing.JSpinner minBPM;
     private javax.swing.JMenuItem openMenuItem;
     private javax.swing.JMenuItem pasteMenuItem;
     private javax.swing.JTable playlistTable;
@@ -387,7 +456,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 	private RowFilter<TableModel, Object> stringMatchRowFilter;
 	private RowFilter<TableModel, Object> inKeyRowFilter;
 	ArrayList<RowFilter<TableModel, Object>> filters;
-	
+
 	private void searchCompatibleKey() {
 		if (currentTrack != null) {
 			highlightedRows.clear();
@@ -397,10 +466,11 @@ public class DatabaseViewer extends javax.swing.JFrame {
 					highlightedRows.add(i);
 				}
 			}
+			sorter.sort();
 			playlistTable.repaint();
 		}
 	}
-	
+
 	private void loadSelectedPlaylist() {
 		if (jTree1.getSelectionCount() > 0) {
 			highlightedRows.clear();
@@ -426,11 +496,11 @@ public class DatabaseViewer extends javax.swing.JFrame {
 			}
 		}
 	}
-	
+
 	private void updateStatusBar(String text) {
 		statusLabel.setText(text);
 	}
-	
+
 	private void configurePlaylistTable() {
 		sorter = new TableRowSorter<TableModel>(tableModel);
 		playlistTable.setModel(tableModel);
@@ -448,7 +518,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		}
 		playlistTable.getColumnModel().getColumn(columnNr.get("Rating")).setCellRenderer(new ColoredTableCellRenderer(highlightedRows) {
 			String[] stars = new String[]{"\u25CC\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CF"};
-			
+
 			public void setValue(Object value) {
 				int rating = (Integer) value;
 				rating = Math.min(5, rating);
@@ -463,7 +533,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 				setText(Utils.formatIntoHHMMSS(duration));
 			}
 		});
-		
+
 		playlistTable.addMouseListener(new java.awt.event.MouseAdapter() {
 			public void mouseClicked(java.awt.event.MouseEvent evt) {
 				if (evt.getClickCount() == 2) {
@@ -476,16 +546,16 @@ public class DatabaseViewer extends javax.swing.JFrame {
 					public void changedUpdate(DocumentEvent e) {
 						newFilter();
 					}
-					
+
 					public void insertUpdate(DocumentEvent e) {
 						newFilter();
 					}
-					
+
 					public void removeUpdate(DocumentEvent e) {
 						newFilter();
 					}
 				});
-		
+
 		inKeyRowFilter = new RowFilter<TableModel, Object>() {
 			@Override
 			public boolean include(Entry<? extends TableModel, ? extends Object> entry) {
@@ -500,16 +570,16 @@ public class DatabaseViewer extends javax.swing.JFrame {
 				}
 			}
 		};
-		
+
 		stringMatchRowFilter = RowFilter.regexFilter("");
 		filters = new ArrayList<>();
 		filters.add(inKeyRowFilter);
 		filters.add(stringMatchRowFilter);
 		rowfilter = RowFilter.andFilter(filters);
 		sorter.setRowFilter(rowfilter);
-		
+
 	}
-	
+
 	private void customInitComponents() {
 		String iconPath = "/de/cygn/foobar2000/res/icon.png";
 		this.setIconImage(new ImageIcon(getClass().getResource(iconPath)).getImage());
@@ -526,7 +596,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 			public boolean isCellEditable(int col, int row) {
 				return false;
 			}
-			
+
 			@Override
 			public Class<?> getColumnClass(int columnIndex) {
 				if (columnIndex == columnNr.get("#")
@@ -539,20 +609,13 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		};
 		configurePlaylistTable();
 
-		/*
-		 RowFilter<Tab	rf = RowFilter.regexFilter(filterField.getText());
-		 } catch (java.util.regex.PatternSyntaxException e) {
-		 return;
-		 }
-		 sorter.setRowFilter(rf);
-		 * */
 		// build playlist tree
 		TreeModel playlistTreeModel = Playlists.readPlaylists(new File("c:\\Users\\Thomas\\Dropbox\\PortableApps\\foobar2000\\"));
 		jTree1.setModel(playlistTreeModel);
 
 		// @todo check resizing properties of table
 	}
-	
+
 	private void searchDatabase() {
 		try {
 			String databaseUrl = "jdbc:h2:mem:account";
@@ -564,49 +627,72 @@ public class DatabaseViewer extends javax.swing.JFrame {
 			// instantiate the dao
 			Dao<Track, String> trackDao =
 					DaoManager.createDao(connectionSource, Track.class);
-			
-			int count = 1;
-			Track queryTrack = new Track();
-			QueryBuilder<Track, String> queryBuilder = trackDao.queryBuilder();
-			String[] keywords = queryField.getText().toLowerCase().split(" ");
-			Where<Track, String> where = queryBuilder.where();
-			StringBuilder where_string_builder = new StringBuilder();
-			for (String word : keywords) {
-				where_string_builder.append(
-						"(lower(`artist`) LIKE '%" + word + "%' OR lower(`title`) LIKE '%" + word + "%' )");
-				where_string_builder.append(" AND ");
-			}
-			where_string_builder.delete(where_string_builder.length() - 5, where_string_builder.length() - 1);
-			where.raw(where_string_builder.toString());
-			System.out.println(queryBuilder.prepare());
-			CloseableIterator<Track> iterator = trackDao.iterator(queryBuilder.prepare());
-			tableModel.setRowCount(0);
-			try {
-				while (iterator.hasNext() && count++ <= 1000000) {
-					Track track = iterator.next();
-					addTrackToTable(track, count);
-				}
-			} finally {
-				iterator.close();
-			}
 
+			int count = 1;
+			String[] keywords = queryField.getText().toLowerCase().split(" ");
+			StringBuilder query_string_builder = new StringBuilder();
+			query_string_builder.append("SELECT * FROM TRACKS WHERE ");
+			for (String word : keywords) {
+				query_string_builder.append(
+						"(lower(`artist`) LIKE '%" + word + "%' OR lower(`title`) LIKE '%" + word + "%' )");
+				query_string_builder.append(" AND ");
+			}
+			query_string_builder.delete(query_string_builder.length() - 5, query_string_builder.length() - 1);
+			String query = query_string_builder.toString();
+			query = String.format("SELECT T.* FROM FT_SEARCH_DATA('%s', 0, 0) FT, TRACKS T WHERE FT.TABLE='TRACKS' AND T.ID=FT.KEYS[0]"
+					// " AND T.BPM < %d AND T.BPM > %d",
+					,
+					queryField.getText(),(Integer)maxBPM.getModel().getValue(),(Integer)minBPM.getModel().getValue());
+			
+			GenericRawResults<Track> rawResults =
+					trackDao.queryRaw(
+					query,
+					new TrackRawRowMapper());
+			addTracksToTable(rawResults.getResults());
+			updateStatusBar(Integer.toString(tableModel.getRowCount()) + " tracks found.");
+			rawResults.close();
+
+			/*
+			 QueryBuilder<Track, String> queryBuilder = trackDao.queryBuilder();
+			 String[] keywords = queryField.getText().toLowerCase().split(" ");
+			 Where<Track, String> where = queryBuilder.where();
+			 StringBuilder where_string_builder = new StringBuilder();
+			 for (String word : keywords) {
+			 where_string_builder.append(
+			 "(lower(`artist`) LIKE '%" + word + "%' OR lower(`title`) LIKE '%" + word + "%' )");
+			 where_string_builder.append(" AND ");
+			 }
+			 where_string_builder.delete(where_string_builder.length() - 5, where_string_builder.length() - 1);
+			 where.raw(where_string_builder.toString());
+			 System.out.println(queryBuilder.prepare());
+			 CloseableIterator<Track> iterator = trackDao.iterator(queryBuilder.prepare());
+			 tableModel.setRowCount(0);
+			 try {
+			 while (iterator.hasNext() && count++ <= 1000000) {
+			 Track track = iterator.next();
+			 addTrackToTable(track, count);
+			 }
+			 } finally {
+			 iterator.close();
+			 }
+			 */
 			// close the connection source
 			connectionSource.close();
 		} catch (SQLException ex) {
 			Logger.getLogger(DatabaseViewer.class.getName()).log(Level.SEVERE, null, ex);
 		}
-		
+
 	}
-	
+
 	private void addTrackToTable(Track track, int count) {
 		tableModel.addRow(new Object[]{Integer.valueOf(count), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track});
 	}
-	
+
 	private Track getTrackAtRow(int row) {
 		row = playlistTable.convertRowIndexToModel(row);
 		return (Track) tableModel.getValueAt(row, pathColumnNr);
 	}
-	
+
 	private void updateCurrentTrack(int row) {
 		currentTrack = getTrackAtRow(row);
 		currentRow = playlistTable.convertRowIndexToModel(row);
@@ -621,36 +707,41 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		sb.append("]");
 		currentTrackTextField.setText(sb.toString());
 	}
-	
+
 	private void copySelectedTracksToClipboard() {
 		int[] rows = playlistTable.getSelectedRows();
+		if (rows.length == 0)
+			return;
 		final ArrayList<File> files = new ArrayList<File>();
+		Track track = null;
 		for (int row : rows) {
 			row = playlistTable.convertRowIndexToModel(row);
-			String filename = (String) tableModel.getValueAt(row, columnNr.get("Path"));
-			files.add(new File(filename));
+			track =((Track) tableModel.getValueAt(row, columnNr.get("Path")));
+			files.add(new File(track.getFilename()));
 		}
-		// @todo handle case if no file is selected
-		updateStatusBar(String.format("%d tracks added to clipboard.", files.size()));
+		if (files.size() == 1) 
+			updateStatusBar(String.format("%s - %s added to clipboard.", track.getArtist(), track.getTitle()));
+		else
+			updateStatusBar(String.format("%d tracks added to clipboard.", files.size()));
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(
 				new Transferable() {
 					@Override
 					public DataFlavor[] getTransferDataFlavors() {
 						return new DataFlavor[]{DataFlavor.javaFileListFlavor};
 					}
-					
+
 					@Override
 					public boolean isDataFlavorSupported(DataFlavor flavor) {
 						return DataFlavor.javaFileListFlavor.equals(flavor);
 					}
-					
+
 					@Override
 					public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
 						return files;
 					}
 				}, null);
 	}
-	
+
 	private void newFilter() {
 		RowFilter<TableModel, Object> rf = null;
 		//If current expression doesn't parse, don't update.
@@ -664,14 +755,14 @@ public class DatabaseViewer extends javax.swing.JFrame {
 			return;
 		}
 	}
-	
-	private void addTracksToTable(ArrayList<Track> tracks) {
+
+	private void addTracksToTable(List<Track> tracks) {
 		int rows = tracks.size();
 		int cols = tableModel.getColumnCount();
 		Vector<Vector<Object>> dataVector = new Vector<Vector<Object>>(rows);
 		int count = 1;
 		for (Track track : tracks) {
-			Object[] a = {Integer.valueOf(count), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track};
+			Object[] a = {Integer.valueOf(track.getId()), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track};
 			Vector<Object> v = new Vector<Object>(Arrays.asList(a));
 			dataVector.add(v);
 			count++;

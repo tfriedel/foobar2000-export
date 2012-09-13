@@ -10,8 +10,9 @@ import java.io.File;
 
 @DatabaseTable(tableName = "tracks")
 public class Track {
-
-	@DatabaseField
+	@DatabaseField (generatedId=true)
+	private int id;
+	@DatabaseField (index=true)
 	private String filename;
 	@DatabaseField
 	private long filetime_in_millis;
@@ -197,7 +198,10 @@ public class Track {
 	 * @return the artist
 	 */
 	public String getArtist() {
-		return artist;
+		if (artist == null)
+			return "";
+		else
+			return artist;
 	}
 
 	/**
@@ -433,7 +437,7 @@ public class Track {
 	 */
 	public void setKey_start(String key_start) {
 		this.key_start = key_start;
-		if (this.key_start.startsWith("0"))
+		if (key_start != null && this.key_start.startsWith("0"))
 			this.key_start = this.key_start.substring(1);
 	}
 
@@ -533,5 +537,19 @@ public class Track {
 	 */
 	public void setProperties(HashMap<String, ArrayList<String>> properties) {
 		this.properties = properties;
+	}
+
+	/**
+	 * @return the id
+	 */
+	public int getId() {
+		return id;
+	}
+
+	/**
+	 * @param id the id to set
+	 */
+	public void setId(int id) {
+		this.id = id;
 	}
 }
