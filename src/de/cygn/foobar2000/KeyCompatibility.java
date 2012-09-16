@@ -19,7 +19,7 @@ public class KeyCompatibility {
 		map.put("11B", 440.0f);  // A
 		map.put("6B", 466.16f);  // Bb / A#
 		map.put("1B", 493.88f);  // B
-		map.put("8B", 532.25f);  // C
+		map.put("8B", 523.25f);  // C
 		map.put("3B", 554.37f);  // Db / C#
 		map.put("10B", 587.33f); // D
 		map.put("5B", 622.25f);  // Eb / D#
@@ -32,7 +32,7 @@ public class KeyCompatibility {
 		map.put("8A", 440.0f);  // A
 		map.put("3A", 466.16f);  // Bb / A#
 		map.put("10A", 493.88f);  // B
-		map.put("5A", 532.25f);  // C
+		map.put("5A", 523.25f);  // C
 		map.put("12A", 554.37f);  // Db / C#
 		map.put("7A", 587.33f); // D
 		map.put("2A", 622.25f);  // Eb / D#
@@ -63,6 +63,16 @@ public class KeyCompatibility {
 		assert compatible("11B", "12B", 125.0f, 126.0f);
 		assert compatible("11B", "11A", 125.0f, 126.0f);
 		assert !compatible("11B", "8A", 125.0f, 126.0f);
+		assert compatible("5A", "5A", 87.0f, 87.0f);
+		assert compatible("5A", "6A", 87.0f, 87.0f);
+		assert compatible("5A", "4A", 87.0f, 87.0f);
+		assert compatible("5A", "5B", 87.0f, 87.0f);
+		assert compatible("5A", "6A", 87.0f, 86.0f);
+		assert compatible("5A", "4A", 87.0f, 86.0f);
+		assert compatible("5A", "5B", 87.0f, 86.0f);
+		assert compatible("5A", "6A", 87.0f, 88.0f);
+		assert compatible("5A", "4A", 87.0f, 88.0f);
+		assert compatible("5A", "5B", 87.0f, 88.0f);
 	}
 
 	/**
@@ -131,12 +141,19 @@ public class KeyCompatibility {
 	}
 
 	public static boolean inAllowedRange(float hz_a, float hz_b) {
+		float allowed_percentage = 0.025f;
 		try {
 			float ratio = Math.max(hz_a, hz_b) / Math.min(hz_a, hz_b);
-			if (ratio < 1.02 || (ratio / 2 < 1.02 && ratio / 2 >= 1.0)) {
+			if (ratio < 1 + allowed_percentage) { //|| (ratio / 2 < 1 + allowed_percentage && ratio / 2 >= 1.0)) {
 				return true;
 			} else {
-				return false;
+				ratio /= 2;
+				if (ratio < 1 + allowed_percentage
+						&& 1 - allowed_percentage < ratio) {
+					return true;
+				} else {
+					return false;
+				}
 			}
 		} catch (ArithmeticException e) {
 			return false;

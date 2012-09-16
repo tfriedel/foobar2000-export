@@ -17,6 +17,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +43,8 @@ import javax.swing.table.TableRowSorter;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
+import org.h2.fulltext.FullTextLucene;
+import org.h2.fulltext.FullTextSettings;
 
 /**
  *
@@ -116,7 +119,6 @@ public class DatabaseViewer extends javax.swing.JFrame {
         playlistTable.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_LAST_COLUMN);
         jScrollPane1.setViewportView(playlistTable);
 
-        queryField.setText("Jeff Mills");
         queryField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 queryFieldActionPerformed(evt);
@@ -343,7 +345,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-		searchDatabase();
+		searchDatabase(queryField.getText(), 0);
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jTree1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTree1MouseClicked
@@ -355,7 +357,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
     }//GEN-LAST:event_copyMenuItemActionPerformed
 
     private void queryFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_queryFieldActionPerformed
-		searchDatabase();
+		searchDatabase(queryField.getText(), 0);
     }//GEN-LAST:event_queryFieldActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
@@ -555,6 +557,20 @@ public class DatabaseViewer extends javax.swing.JFrame {
 						newFilter();
 					}
 				});
+		queryField.getDocument().addDocumentListener(
+				new DocumentListener() {
+					public void changedUpdate(DocumentEvent e) {
+						queryFieldChanged();
+					}
+
+					public void insertUpdate(DocumentEvent e) {
+						queryFieldChanged();
+					}
+
+					public void removeUpdate(DocumentEvent e) {
+						queryFieldChanged();
+					}
+				});
 
 		inKeyRowFilter = new RowFilter<TableModel, Object>() {
 			@Override
@@ -616,34 +632,23 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		// @todo check resizing properties of table
 	}
 
-	private void searchDatabase() {
+	private void searchDatabase(String query_text, int maxResults) {
+		if (maxResults == 0) {
+			maxResults = 1000000;
+		}
 		try {
 			String databaseUrl = "jdbc:h2:mem:account";
 			databaseUrl = "jdbc:h2:tcp://localhost/~/test";
 			System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
-			// create a connection source to our database
 			ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl, "sa", "");
-			//Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/test","sa","");
-			// instantiate the dao
 			Dao<Track, String> trackDao =
 					DaoManager.createDao(connectionSource, Track.class);
 
-			int count = 1;
-			String[] keywords = queryField.getText().toLowerCase().split(" ");
-			StringBuilder query_string_builder = new StringBuilder();
-			query_string_builder.append("SELECT * FROM TRACKS WHERE ");
-			for (String word : keywords) {
-				query_string_builder.append(
-						"(lower(`artist`) LIKE '%" + word + "%' OR lower(`title`) LIKE '%" + word + "%' )");
-				query_string_builder.append(" AND ");
-			}
-			query_string_builder.delete(query_string_builder.length() - 5, query_string_builder.length() - 1);
-			String query = query_string_builder.toString();
-			query = String.format("SELECT T.* FROM FT_SEARCH_DATA('%s', 0, 0) FT, TRACKS T WHERE FT.TABLE='TRACKS' AND T.ID=FT.KEYS[0]"
-					// " AND T.BPM < %d AND T.BPM > %d",
-					,
-					queryField.getText(),(Integer)maxBPM.getModel().getValue(),(Integer)minBPM.getModel().getValue());
-			
+			//query = String.format("SELECT T.* FROM FT_SEARCH_DATA('%s', 1000000, 0) FT, TRACKS T WHERE FT.TABLE='TRACKS' AND T.ID=FT.KEYS[0]"
+			// 2nd and 3rd parameter of FTL_SEARCH_DATA are limit and offset
+			String query = String.format("SELECT T.* FROM FTL_SEARCH_DATA('%s', %d, 0) FTL, TRACKS T WHERE FTL.TABLE='TRACKS' AND T.ID=FTL.KEYS[0]"
+					+ " AND T.BPM <= %d AND T.BPM >= %d",
+					query_text, maxResults, (Integer) maxBPM.getModel().getValue(), (Integer) minBPM.getModel().getValue());
 			GenericRawResults<Track> rawResults =
 					trackDao.queryRaw(
 					query,
@@ -651,31 +656,6 @@ public class DatabaseViewer extends javax.swing.JFrame {
 			addTracksToTable(rawResults.getResults());
 			updateStatusBar(Integer.toString(tableModel.getRowCount()) + " tracks found.");
 			rawResults.close();
-
-			/*
-			 QueryBuilder<Track, String> queryBuilder = trackDao.queryBuilder();
-			 String[] keywords = queryField.getText().toLowerCase().split(" ");
-			 Where<Track, String> where = queryBuilder.where();
-			 StringBuilder where_string_builder = new StringBuilder();
-			 for (String word : keywords) {
-			 where_string_builder.append(
-			 "(lower(`artist`) LIKE '%" + word + "%' OR lower(`title`) LIKE '%" + word + "%' )");
-			 where_string_builder.append(" AND ");
-			 }
-			 where_string_builder.delete(where_string_builder.length() - 5, where_string_builder.length() - 1);
-			 where.raw(where_string_builder.toString());
-			 System.out.println(queryBuilder.prepare());
-			 CloseableIterator<Track> iterator = trackDao.iterator(queryBuilder.prepare());
-			 tableModel.setRowCount(0);
-			 try {
-			 while (iterator.hasNext() && count++ <= 1000000) {
-			 Track track = iterator.next();
-			 addTrackToTable(track, count);
-			 }
-			 } finally {
-			 iterator.close();
-			 }
-			 */
 			// close the connection source
 			connectionSource.close();
 		} catch (SQLException ex) {
@@ -710,19 +690,21 @@ public class DatabaseViewer extends javax.swing.JFrame {
 
 	private void copySelectedTracksToClipboard() {
 		int[] rows = playlistTable.getSelectedRows();
-		if (rows.length == 0)
+		if (rows.length == 0) {
 			return;
+		}
 		final ArrayList<File> files = new ArrayList<File>();
 		Track track = null;
 		for (int row : rows) {
 			row = playlistTable.convertRowIndexToModel(row);
-			track =((Track) tableModel.getValueAt(row, columnNr.get("Path")));
+			track = ((Track) tableModel.getValueAt(row, columnNr.get("Path")));
 			files.add(new File(track.getFilename()));
 		}
-		if (files.size() == 1) 
+		if (files.size() == 1) {
 			updateStatusBar(String.format("%s - %s added to clipboard.", track.getArtist(), track.getTitle()));
-		else
+		} else {
 			updateStatusBar(String.format("%d tracks added to clipboard.", files.size()));
+		}
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(
 				new Transferable() {
 					@Override
@@ -774,5 +756,19 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		playlistTable.setAutoCreateRowSorter(false);
 		playlistTable.setAutoCreateColumnsFromModel(false);
 		tableModel.setDataVector(dataVector, columns);
+	}
+
+	private void queryFieldChanged() {
+//		final String whitespaceChars = " \t\n\r\f+\"*%&/()=?'!,.;:-_#@|^~`{}[]<>\\";
+//
+//		if (queryField.getText().length() > 2 ) {
+//			String query = queryField.getText();
+//			char c = query.charAt(query.length() - 1);
+//			String s = "" + c;
+//			if (!whitespaceChars.contains(s)) {
+//				query = query + "*";
+//			}
+//			searchDatabase(query, 100);
+//		}
 	}
 }

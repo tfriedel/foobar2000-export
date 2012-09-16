@@ -336,6 +336,11 @@ public class FPLPlaylist {
 		// CREATE ALIAS IF NOT EXISTS FT_INIT FOR "org.h2.fulltext.FullText.init";
         // CALL FT_INIT();
 		// CALL FT_CREATE_INDEX('PUBLIC', 'TRACKS', 'ARTIST,TITLE,ALBUM,PUBLISHER,CATNR,DATE,KEY_START,STYLE,GENRE')
+		
+		// create full text index with H2 Lucene
+		//CREATE ALIAS IF NOT EXISTS FTL_INIT FOR "org.h2.fulltext.FullTextLucene.init";
+		//CALL FTL_INIT();
+		//CALL FTL_CREATE_INDEX('PUBLIC', 'TRACKS',NULL);
 		// close the connection source
 		connectionSource.close();
 	}
