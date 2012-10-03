@@ -10,19 +10,20 @@ import java.io.File;
 
 @DatabaseTable(tableName = "tracks")
 public class Track {
-	@DatabaseField (generatedId=true)
+
+	@DatabaseField(generatedId = true)
 	private int id;
-	@DatabaseField (index=true)
+	@DatabaseField(index = true, uniqueIndexName = "uniqueIdx")
 	private String filename;
 	@DatabaseField
 	private long filetime_in_millis;
-	@DatabaseField (index=true)
+	@DatabaseField
 	private String artist;
 	@DatabaseField
 	private String album_artist;
-	@DatabaseField (index=true)
-	private String title;
 	@DatabaseField
+	private String title;
+	@DatabaseField(uniqueIndexName = "uniqueIdx")
 	private String tracknumber;
 	@DatabaseField
 	private String bitrate;
@@ -30,7 +31,7 @@ public class Track {
 	private String album;
 	@DatabaseField
 	private String date;
-	@DatabaseField(dataType=DataType.LONG_STRING)
+	@DatabaseField(dataType = DataType.LONG_STRING)
 	private String comment;
 	@DatabaseField
 	private String catnr;
@@ -65,6 +66,8 @@ public class Track {
 	private float albumReplayPeak;
 	@DatabaseField
 	private float trackReplayPeak;
+	@DatabaseField
+	private boolean inDatabase;
 	private HashMap<String, ArrayList<String>> properties;
 
 	public String toString() {
@@ -88,15 +91,17 @@ public class Track {
 
 	/**
 	 * returns a string of max. length 255, to make it fit into VARCHAR(255)
+	 *
 	 * @param s
-	 * @return 
+	 * @return
 	 */
 	public static String makeFit(String s) {
-		if (s.length()>255)
-			s = s.substring(0,255);
+		if (s.length() > 255) {
+			s = s.substring(0, 255);
+		}
 		return s;
 	}
-	
+
 	void updateFields() {
 		if (getProperties().containsKey("artist")) {
 			setArtist(makeFit(getProperties().get("artist").get(0)));
@@ -119,7 +124,6 @@ public class Track {
 				try {
 					setBpm((float) Float.valueOf(bpm_string));
 				} catch (NumberFormatException e2) {
-					
 				}
 			}
 		}
@@ -161,7 +165,6 @@ public class Track {
 			try {
 				setRating((int) Integer.valueOf(getProperties().get("rating").get(0))); // @todo make failsafe
 			} catch (NumberFormatException e) {
-				
 			}
 		}
 	}
@@ -198,10 +201,11 @@ public class Track {
 	 * @return the artist
 	 */
 	public String getArtist() {
-		if (artist == null)
+		if (artist == null) {
 			return "";
-		else
+		} else {
 			return artist;
+		}
 	}
 
 	/**
@@ -230,8 +234,9 @@ public class Track {
 	 */
 	public String getTitle() {
 		if (Utils.isEmpty(title)) {
-			if (!(Utils.isEmpty(filename)))
+			if (!(Utils.isEmpty(filename))) {
 				return new File(filename).getName();
+			}
 		}
 		return title;
 	}
@@ -247,7 +252,10 @@ public class Track {
 	 * @return the tracknumber
 	 */
 	public String getTracknumber() {
-		return tracknumber;
+		if (tracknumber != null)
+			return tracknumber;
+		else
+			return "";
 	}
 
 	/**
@@ -437,8 +445,9 @@ public class Track {
 	 */
 	public void setKey_start(String key_start) {
 		this.key_start = key_start;
-		if (key_start != null && this.key_start.startsWith("0"))
+		if (key_start != null && this.key_start.startsWith("0")) {
 			this.key_start = this.key_start.substring(1);
+		}
 	}
 
 	/**
@@ -551,5 +560,91 @@ public class Track {
 	 */
 	public void setId(int id) {
 		this.id = id;
+	}
+
+	/**
+	 * @return the inDatabase
+	 */
+	public boolean isInDatabase() {
+		return inDatabase;
+	}
+
+	/**
+	 * @param inDatabase the inDatabase to set
+	 */
+	public void setInDatabase(boolean inDatabase) {
+		this.inDatabase = inDatabase;
+	}
+
+	public String asString() {
+		StringBuffer sb = new StringBuffer();
+		sb.append('#');
+		sb.append(album);
+		sb.append('#');
+		sb.append(album_artist);
+		sb.append('#');
+		sb.append(artist);
+		sb.append('#');
+		sb.append(bitrate);
+		sb.append('#');
+		sb.append(bpm);
+		sb.append('#');
+		sb.append(catnr);
+		sb.append('#');
+		sb.append(codec);
+		sb.append('#');
+		sb.append(comment);
+		sb.append('#');
+		sb.append(date);
+		sb.append('#');
+		sb.append(discogs_release_id);
+		sb.append('#');
+		sb.append(duration);
+		sb.append('#');
+		sb.append(filename);
+		sb.append('#');
+		sb.append(filesize);
+		sb.append('#');
+		sb.append(filetime_in_millis);
+		sb.append('#');
+		sb.append(genre);
+		sb.append('#');
+		sb.append(key_start);
+		sb.append('#');
+		sb.append(publisher);
+		sb.append('#');
+		sb.append(rating);
+		sb.append('#');
+		sb.append(style);
+		sb.append('#');
+		sb.append(title);
+		sb.append('#');
+		sb.append(tracknumber);
+		return sb.toString();
+	}
+
+	public int getKey() {
+		StringBuilder sb = new StringBuilder();
+			sb.append(getFilename());
+			sb.append('#');
+			sb.append(getTracknumber());
+			return sb.toString().hashCode();
+	}
+	
+	@Override
+	public int hashCode() {
+		return asString().hashCode();
+	}
+
+	@Override
+	public boolean equals(Object aThat) {
+		if (this == aThat) {
+			return true;
+		}
+		if (!(aThat instanceof Track)) {
+			return false;
+		}
+		Track that = (Track) aThat;
+		return this.asString().equals(that.asString());
 	}
 }
