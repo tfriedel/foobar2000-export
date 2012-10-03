@@ -4,8 +4,14 @@ import com.j256.ormlite.dao.RawRowMapper;
 import com.j256.ormlite.stmt.RawRowMapperImpl;
 import java.sql.SQLException;
 
-/** for mapping SQL results (string arrays) to Track objects */
+/**
+ * for mapping SQL results (string arrays) to Track objects
+ */
 public class TrackRawRowMapper implements RawRowMapper<Track> {
+
+	public static String select_fields =
+			"SELECT T.ID, T.FILENAME, T.FILETIME_IN_MILLIS, T.ARTIST, T.ALBUM_ARTIST, T.TITLE, T.TRACKNUMBER, T.BITRATE, T.ALBUM, T.DATE, T.COMMENT, T.CATNR, T.CODEC, T.PUBLISHER, T.DISCOGS_RELEASE_ID, T.STYLE, T.GENRE, T.BPM, T.RATING, T.KEY_START, T.DURATION, T.FILESIZE, T.ALBUMREPLAYGAIN, T.TRACKREPLAYGAIN, T.ALBUMREPLAYPEAK, T.TRACKREPLAYPEAK, T.INDATABASE ";
+
 	@Override
 	public Track mapRow(String[] columnNames, String[] resultColumns) throws SQLException {
 		Track t = new Track();
@@ -32,12 +38,11 @@ public class TrackRawRowMapper implements RawRowMapper<Track> {
 		t.setKey_start(r[19]);
 		t.setDuration(Double.valueOf(r[20]));
 		t.setFilesize(Integer.valueOf(r[21]));
-		t.setAlbumReplayGain(Float.valueOf(r[22]));	
+		t.setAlbumReplayGain(Float.valueOf(r[22]));
 		t.setTrackReplayGain(Float.valueOf(r[23]));
 		t.setAlbumReplayPeak(Float.valueOf(r[24]));
 		t.setTrackReplayPeak(Float.valueOf(r[25]));
-		
+		t.setInDatabase(Boolean.valueOf(r[26]));
 		return t;
 	}
-
 }
