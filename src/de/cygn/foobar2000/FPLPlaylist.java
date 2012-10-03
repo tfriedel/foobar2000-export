@@ -1,11 +1,6 @@
 package de.cygn.foobar2000;
 
 import com.j256.ormlite.dao.Dao;
-import com.j256.ormlite.dao.DaoManager;
-import com.j256.ormlite.field.DatabaseFieldConfig;
-import com.j256.ormlite.jdbc.JdbcConnectionSource;
-import com.j256.ormlite.logger.LocalLog;
-import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -14,8 +9,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -25,9 +22,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Locale;
+import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,12 +49,21 @@ class StringStore {
 }
 
 public class FPLPlaylist {
-	
-	
+
 	private static Logger logger = Logger.getLogger(FPLPlaylist.class.getName());
 	private static int[] export_fpl_magic = {-1852006175, 1115110648, -868537211, -221052652};
 	private static int[] intern_fpl_magic = {-614910208, 1314278724, 717632640, -1180268102};
 	private static int[] database_fpl_magic = {-1854960391, 1262355587, -545234278, -2121477978};
+	public static String foobarHashes = "c:\\users\\thomas\\dropbox\\portableapps\\foobar2000\\database_hashes.obj";
+	public static String foobarDatabase = "c:\\users\\thomas\\dropbox\\portableapps\\foobar2000\\database.dat";
+	public static String fb2kDir = "c:\\Users\\Thomas\\Dropbox\\PortableApps\\foobar2000\\";
+	static {
+		if (!new File(foobarDatabase).exists()) {
+			foobarDatabase = "i:\\dropbox\\portableapps\\foobar2000\\database.dat";
+			foobarHashes = "i:\\dropbox\\portableapps\\foobar2000\\database_hashes.obj";
+			fb2kDir = "i:\\Dropbox\\PortableApps\\foobar2000\\";
+		}
+	}
 
 	public static void saveM3U(ArrayList<Track> playlist, File output) throws FileNotFoundException, IOException {
 		BufferedWriter out = new BufferedWriter(new FileWriter(output));
@@ -296,52 +301,202 @@ public class FPLPlaylist {
 		//saveM3U(tracklist, new File(m3u_filename));
 	}
 
-	public static void main(String[] args) throws FileNotFoundException, IOException, SQLException {
-		String foobarDatabase = "c:\\users\\thomas\\dropbox\\portableapps\\foobar2000\\database.dat";
+	public static void main2(String[] args) throws FileNotFoundException, IOException, SQLException {
 		ArrayList<Track> tracklist = readPlaylist(new File(foobarDatabase));
 		saveDatabase(tracklist);
 	}
-	
-	private static void saveDatabase(final ArrayList<Track> tracklist) throws SQLException {
-		String databaseUrl = "jdbc:h2:mem:account";
-		databaseUrl = "jdbc:h2:tcp://localhost/~/test";
-		System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
-		// create a connection source to our database
-		ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl, "sa", "");
-		//Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost/~/test","sa","");
-		// instantiate the dao
-		final Dao<Track, String> trackDao =
-				DaoManager.createDao(connectionSource, Track.class);
 
-		TableUtils.dropTable(connectionSource, Track.class, true);
-		TableUtils.createTable(connectionSource, Track.class);
+	public static void main(String[] args) throws FileNotFoundException, IOException, SQLException {
+	}
+
+	public static void fullImport() {
+		try {
+			ArrayList<Track> tracklist = readPlaylist(new File(foobarDatabase));
+			saveDatabase(tracklist);
+		} catch (SQLException ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (FileNotFoundException ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (IOException ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+		}
+
+	}
+
+	public static void incrementalImport() {
+		try {
+			ArrayList<Track> tracklist = readPlaylist(new File(foobarDatabase));
+
+
+			// unserialize map from disk
+			HashMap<Integer, Integer> map = null;
+			InputStream fis = null;
+			try {
+				fis = new FileInputStream(foobarHashes);
+				ObjectInputStream o = new ObjectInputStream(fis);
+				map = (HashMap<Integer, Integer>) o.readObject();
+			} catch (IOException e) {
+				System.err.println(e);
+			} catch (ClassNotFoundException e) {
+				System.err.println(e);
+			} finally {
+				try {
+					fis.close();
+				} catch (Exception e) {
+				}
+			}
+
+			/*
+			 tracklist.get(5).setKey_start("3A");
+			 tracklist.get(20000).setKey_start("9A");
+			 Track t = tracklist.get(30000);
+			 t.setFilename(t.getFilename() + "/123");
+			 t = tracklist.get(40000);
+			 t.setTitle("asdf");
+			 */
+			final ArrayList<Track> changedTracks = new ArrayList<>();
+			final ArrayList<Track> newTracks = new ArrayList<>();
+			detectChanges(tracklist, map, changedTracks, newTracks);
+			System.out.printf("\nchanged: %d Tracks  new: %d Tracks\n", changedTracks.size(), newTracks.size());
+
+			// propagate changes from foobar2000 database to sql database
+			Database db = new Database();
+			// instantiate the dao
+			final Dao<Track, String> trackDao = db.getTrackDao();
+			try {
+				trackDao.callBatchTasks(new Callable<String>() {
+					public String call() throws Exception {
+						List<Track> tl;
+						Track dbTrack;
+						for (Track track : changedTracks) {
+							track.setInDatabase(true);
+							try {
+
+								tl = trackDao.queryBuilder().where().eq("filename", track.getFilename()).and().eq("tracknumber", track.getTracknumber()).query();
+								if (tl.size() == 0) {
+									Logger.getLogger(FPLPlaylist.class.getName()).log(Level.WARNING, "Couldn't find changed track " + track + " in database.");
+									trackDao.create(track);
+									continue;
+								}
+								dbTrack = tl.get(0);
+								track.setId(dbTrack.getId());
+								trackDao.update(track);
+							} catch (SQLException ex) {
+								Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+							}
+						}
+
+						for (Track track : newTracks) {
+							track.setInDatabase(true);
+							trackDao.create(track);
+						}
+
+						return "";
+					}
+				});
+			} catch (Exception ex) {
+				Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+			}
+			db.close();
+			for (Track track : newTracks) {
+				map.put(track.getKey(), track.hashCode());
+			}
+			for (Track track : changedTracks) {
+				map.put(track.getKey(), track.hashCode());
+			}
+			saveHashes(map);
+		} catch (SQLException ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (FileNotFoundException ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (IOException ex) {
+			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
+		}
+	}
+
+	private static HashMap<Integer, Integer> createHashes(ArrayList<Track> tracklist) {
+		HashMap<Integer, Integer> map = new HashMap<>();
+		for (Track track : tracklist) {
+			map.put(track.getKey(), track.hashCode());
+		}
+		return map;
+	}
+
+	/**
+	 * calculates hashes for the track objects in tracklist and saves them to a
+	 * file. this is then used during the next import to find out which tracks
+	 * are new or changed. these are then updated in the database.
+	 *
+	 * @param map
+	 */
+	public static void saveHashes(HashMap<Integer, Integer> map) {
+
+		// serialize map to disk
+		OutputStream fos = null;
+		try {
+			fos = new FileOutputStream(foobarHashes);
+			ObjectOutputStream o = new ObjectOutputStream(fos);
+			o.writeObject(map);
+		} catch (IOException e) {
+			System.err.println(e);
+		} finally {
+			try {
+				fos.close();
+			} catch (Exception e) {
+			}
+		}
+
+	}
+
+	private static void detectChanges(ArrayList<Track> tracklist, HashMap<Integer, Integer> map, ArrayList<Track> changedTracks, ArrayList<Track> newTracks) {
+		// @todo find tracks in database that are not in foobar2000 database
+		int key;
+		assert changedTracks != null;
+		assert newTracks != null;
+		assert map != null;
+		for (Track track : tracklist) {
+			key = track.getKey();
+			if (map.containsKey(key)) {
+				if (!map.get(key).equals(track.hashCode())) {
+					changedTracks.add(track);
+				}
+			} else {
+				newTracks.add(track);
+			}
+		}
+	}
+
+	private static void saveDatabase(final ArrayList<Track> tracklist) throws SQLException {
+		Database db = new Database();
+		// instantiate the dao
+		final Dao<Track, String> trackDao = db.getTrackDao();
+		TableUtils.dropTable(db.getConnectionSource(), Track.class, true);
+		TableUtils.createTable(db.getConnectionSource(), Track.class);
 		try {
 			trackDao.callBatchTasks(new Callable<String>() {
 				public String call() throws Exception {
 					for (Track track : tracklist) {
+						track.setInDatabase(true);
 						trackDao.create(track);
 					}
 					return "";
 				}
 			});
-			/*
-			for (Track track : tracklist) {
-				trackDao.create(track);
-			}
-			*/
 		} catch (Exception ex) {
 			Logger.getLogger(FPLPlaylist.class.getName()).log(Level.SEVERE, null, ex);
 		}
 		// create full text index with H2 native
 		// CREATE ALIAS IF NOT EXISTS FT_INIT FOR "org.h2.fulltext.FullText.init";
-        // CALL FT_INIT();
+		// CALL FT_INIT();
 		// CALL FT_CREATE_INDEX('PUBLIC', 'TRACKS', 'ARTIST,TITLE,ALBUM,PUBLISHER,CATNR,DATE,KEY_START,STYLE,GENRE')
-		
+
 		// create full text index with H2 Lucene
-		//CREATE ALIAS IF NOT EXISTS FTL_INIT FOR "org.h2.fulltext.FullTextLucene.init";
-		//CALL FTL_INIT();
-		//CALL FTL_CREATE_INDEX('PUBLIC', 'TRACKS',NULL);
+		trackDao.executeRaw("CREATE ALIAS IF NOT EXISTS FTL_INIT FOR \"org.h2.fulltext.FullTextLucene.init\"");
+		trackDao.executeRaw("CALL FTL_INIT()");
+		trackDao.executeRaw("CALL FTL_DROP_ALL()");
+		trackDao.executeRaw("CALL FTL_CREATE_INDEX('PUBLIC', 'TRACKS',NULL)");;
 		// close the connection source
-		connectionSource.close();
+		db.close();
+		saveHashes(createHashes(tracklist));
 	}
 }
