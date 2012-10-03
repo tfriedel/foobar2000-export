@@ -1,23 +1,16 @@
 package de.cygn.foobar2000;
 
-import com.j256.ormlite.dao.CloseableIterator;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
-import com.j256.ormlite.dao.GenericRawResults;
-import com.j256.ormlite.jdbc.JdbcConnectionSource;
-import com.j256.ormlite.logger.LocalLog;
-import com.j256.ormlite.stmt.QueryBuilder;
-import com.j256.ormlite.stmt.Where;
-import com.j256.ormlite.support.ConnectionSource;
+import com.j256.ormlite.support.DatabaseConnection;
+import com.j256.ormlite.table.TableUtils;
+import de.cygn.foobar2000.database.TrackQuery;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,9 +22,8 @@ import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.imageio.ImageIO;
-import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JTree;
 import javax.swing.RowFilter;
 import javax.swing.RowFilter.Entry;
 import javax.swing.event.DocumentEvent;
@@ -43,14 +35,16 @@ import javax.swing.table.TableRowSorter;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
-import org.h2.fulltext.FullTextLucene;
-import org.h2.fulltext.FullTextSettings;
+import org.dani.lazy.util.SimpleLazyList;
 
 /**
  *
  * @author Thomas
  */
 public class DatabaseViewer extends javax.swing.JFrame {
+
+	private LazyTrackList listService;
+	private TrackQuery trackQuery;
 
 	/**
 	 * Creates new form DatabaseViewer
@@ -69,14 +63,13 @@ public class DatabaseViewer extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        tableModel = new javax.swing.table.DefaultTableModel();
         jButton1 = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         playlistTable = new javax.swing.JTable();
         queryField = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
         jScrollPane2 = new javax.swing.JScrollPane();
-        jTree1 = new javax.swing.JTree();
+        playlistTree = new javax.swing.JTree();
         statusPanel = new javax.swing.JPanel();
         statusLabel = new javax.swing.JLabel();
         jButton2 = new javax.swing.JButton();
@@ -95,6 +88,9 @@ public class DatabaseViewer extends javax.swing.JFrame {
         openMenuItem = new javax.swing.JMenuItem();
         saveMenuItem = new javax.swing.JMenuItem();
         saveAsMenuItem = new javax.swing.JMenuItem();
+        importPlaylistsMenuItem = new javax.swing.JMenuItem();
+        importFB2kMenuItem = new javax.swing.JMenuItem();
+        importFB2kIncMenuItem = new javax.swing.JMenuItem();
         exitMenuItem = new javax.swing.JMenuItem();
         editMenu = new javax.swing.JMenu();
         cutMenuItem = new javax.swing.JMenuItem();
@@ -115,7 +111,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
         });
 
         playlistTable.setAutoCreateRowSorter(true);
-        playlistTable.setModel(tableModel);
+        playlistTable.setToolTipText("");
         playlistTable.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_LAST_COLUMN);
         jScrollPane1.setViewportView(playlistTable);
 
@@ -132,15 +128,15 @@ public class DatabaseViewer extends javax.swing.JFrame {
         javax.swing.tree.DefaultMutableTreeNode treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("bla");
         treeNode2.add(treeNode3);
         treeNode1.add(treeNode2);
-        jTree1.setModel(new javax.swing.tree.DefaultTreeModel(treeNode1));
-        jTree1.setRootVisible(false);
-        jTree1.setShowsRootHandles(true);
-        jTree1.addMouseListener(new java.awt.event.MouseAdapter() {
+        playlistTree.setModel(new javax.swing.tree.DefaultTreeModel(treeNode1));
+        playlistTree.setRootVisible(false);
+        playlistTree.setShowsRootHandles(true);
+        playlistTree.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jTree1MouseClicked(evt);
+                playlistTreeMouseClicked(evt);
             }
         });
-        jScrollPane2.setViewportView(jTree1);
+        jScrollPane2.setViewportView(playlistTree);
 
         statusPanel.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.LOWERED));
         statusPanel.setFocusable(false);
@@ -221,6 +217,30 @@ public class DatabaseViewer extends javax.swing.JFrame {
         saveAsMenuItem.setText("Save As ...");
         saveAsMenuItem.setDisplayedMnemonicIndex(5);
         fileMenu.add(saveAsMenuItem);
+
+        importPlaylistsMenuItem.setText("Import playlists");
+        importPlaylistsMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                playlistsImportActionPerformed(evt);
+            }
+        });
+        fileMenu.add(importPlaylistsMenuItem);
+
+        importFB2kMenuItem.setText("Import Fb2k Database");
+        importFB2kMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                importFB2kMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(importFB2kMenuItem);
+
+        importFB2kIncMenuItem.setText("Import Fb2k Database incrementally");
+        importFB2kIncMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                importFB2kIncMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(importFB2kIncMenuItem);
 
         exitMenuItem.setMnemonic('x');
         exitMenuItem.setText("Exit");
@@ -345,19 +365,19 @@ public class DatabaseViewer extends javax.swing.JFrame {
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-		searchDatabase(queryField.getText(), 0);
+		searchDatabase(queryField.getText());
     }//GEN-LAST:event_jButton1ActionPerformed
 
-    private void jTree1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTree1MouseClicked
+    private void playlistTreeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playlistTreeMouseClicked
 		loadSelectedPlaylist();
-    }//GEN-LAST:event_jTree1MouseClicked
+    }//GEN-LAST:event_playlistTreeMouseClicked
 
     private void copyMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyMenuItemActionPerformed
 		copySelectedTracksToClipboard();
     }//GEN-LAST:event_copyMenuItemActionPerformed
 
     private void queryFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_queryFieldActionPerformed
-		searchDatabase(queryField.getText(), 0);
+		searchDatabase(queryField.getText());
     }//GEN-LAST:event_queryFieldActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
@@ -368,6 +388,18 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private void jCheckBox1StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jCheckBox1StateChanged
 		sorter.sort();
     }//GEN-LAST:event_jCheckBox1StateChanged
+
+    private void playlistsImportActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_playlistsImportActionPerformed
+		playlistsImport();
+    }//GEN-LAST:event_playlistsImportActionPerformed
+
+    private void importFB2kMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_importFB2kMenuItemActionPerformed
+		FPLPlaylist.fullImport();
+    }//GEN-LAST:event_importFB2kMenuItemActionPerformed
+
+    private void importFB2kIncMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_importFB2kIncMenuItemActionPerformed
+		FPLPlaylist.incrementalImport();
+    }//GEN-LAST:event_importFB2kIncMenuItemActionPerformed
 
 	private void playlistTableMouseDoubleClicked(java.awt.event.MouseEvent evt) {
 		updateCurrentTrack(playlistTable.getSelectedRow());
@@ -423,6 +455,9 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private javax.swing.JTextField filterField;
     private javax.swing.JLabel filterLabel;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JMenuItem importFB2kIncMenuItem;
+    private javax.swing.JMenuItem importFB2kMenuItem;
+    private javax.swing.JMenuItem importPlaylistsMenuItem;
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JCheckBox jCheckBox1;
@@ -433,37 +468,44 @@ public class DatabaseViewer extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JTree jTree1;
     private javax.swing.JSpinner maxBPM;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JSpinner minBPM;
     private javax.swing.JMenuItem openMenuItem;
     private javax.swing.JMenuItem pasteMenuItem;
     private javax.swing.JTable playlistTable;
+    private javax.swing.JTree playlistTree;
     private javax.swing.JTextField queryField;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JMenuItem saveMenuItem;
     private javax.swing.JLabel statusLabel;
     private javax.swing.JPanel statusPanel;
-    private javax.swing.table.DefaultTableModel tableModel;
     // End of variables declaration//GEN-END:variables
+	private int tableWindowSize = 2000;
 	private HashMap<String, Integer> columnNr = new HashMap<>();
+	private LazyTableModel tableModel;
 	private String[] columnIdentifiers;
 	private Set<Integer> highlightedRows;
 	private int pathColumnNr;
 	private Track currentTrack;
 	private int currentRow;
+	
+	private SimpleLazyList<Object[]> lazyList;
 	private TableRowSorter<TableModel> sorter;
 	private RowFilter<TableModel, Object> rowfilter;
 	private RowFilter<TableModel, Object> stringMatchRowFilter;
 	private RowFilter<TableModel, Object> inKeyRowFilter;
 	ArrayList<RowFilter<TableModel, Object>> filters;
 
+
+	
 	private void searchCompatibleKey() {
 		if (currentTrack != null) {
 			highlightedRows.clear();
+			tableModel.fetchAll(); // @todo remove this and implement key calculation on database
 			for (int i = 0; i < tableModel.getRowCount(); i++) {
 				Track track = (Track) tableModel.getValueAt(i, pathColumnNr);
+				// @todo here's a bug where a not yet loaded row entry is cast to Track
 				if (KeyCompatibility.compatible(currentTrack.getKey_start(), track.getKey_start(), currentTrack.getBpm(), track.getBpm())) {
 					highlightedRows.add(i);
 				}
@@ -474,25 +516,31 @@ public class DatabaseViewer extends javax.swing.JFrame {
 	}
 
 	private void loadSelectedPlaylist() {
-		if (jTree1.getSelectionCount() > 0) {
+		if (playlistTree.getSelectionCount() > 0) {
 			highlightedRows.clear();
-			TreePath tp = jTree1.getSelectionPath();
+			TreePath tp = playlistTree.getSelectionPath();
 			Object object = tp.getLastPathComponent();
 			if (object instanceof DefaultMutableTreeNode) {
 				DefaultMutableTreeNode node = (DefaultMutableTreeNode) object;
 				if (node.getUserObject() instanceof Playlist) {
 					Playlist playlist = (Playlist) node.getUserObject();
-					updateStatusBar(playlist.toString());
-					tableModel.setRowCount(0);
-					int count = 1;
-					if (playlist.getTracks() != null) {
-						addTracksToTable(playlist.getTracks());
-						/*
-						 for (Track track : playlist.getTracks()) {
-						 addTrackToTable(track, count);
-						 count++;
-						 }
-						 */
+					int playlist_nr;
+					try {
+
+						playlist_nr = playlist.getNr();
+						updateStatusBar(playlist.toString());
+						// @todo check if clearing table model necessary
+						//tableModel.clear();
+
+						//tableModel.setQuery(query, "ORDER BY P.TRACK_NR");
+						trackQuery.setMinBPM((Integer)minBPM.getModel().getValue());
+						trackQuery.setMaxBPM((Integer)maxBPM.getModel().getValue());
+
+						tableModel.setQuery(trackQuery.loadPlaylist(playlist_nr));
+
+						tableModel.fireTableStructureChanged();
+						updateStatusBar(Integer.toString(tableModel.getRowCount()) + " tracks found.");
+					} catch (NumberFormatException e) {
 					}
 				}
 			}
@@ -508,7 +556,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		playlistTable.setModel(tableModel);
 		playlistTable.setRowSorter(sorter);
 		int[] preferredWidths = new int[]{35, 108, 151, 140, 47, 84, 40, 51, 37, 40, 52, 32, 40, 359};
-		tableModel.setColumnIdentifiers(columnIdentifiers);
+		//tableModel.setColumnIdentifiers(columnIdentifiers);
 		for (int i = 0; i < preferredWidths.length; i++) {
 			playlistTable.getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
 		}
@@ -522,17 +570,21 @@ public class DatabaseViewer extends javax.swing.JFrame {
 			String[] stars = new String[]{"\u25CC\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CC\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CC\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CC\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CC", "\u25CF\u25CF\u25CF\u25CF\u25CF"};
 
 			public void setValue(Object value) {
-				int rating = (Integer) value;
-				rating = Math.min(5, rating);
-				rating = Math.max(0, rating);
-				assert 0 <= rating && rating <= 5;
-				setText(stars[rating]);
+				if (value instanceof Integer) {
+					int rating = (Integer) value;
+					rating = Math.min(5, rating);
+					rating = Math.max(0, rating);
+					assert 0 <= rating && rating <= 5;
+					setText(stars[rating]);
+				}
 			}
 		});
 		playlistTable.getColumnModel().getColumn(columnNr.get("Length")).setCellRenderer(new ColoredTableCellRenderer(highlightedRows) {
 			public void setValue(Object value) {
-				int duration = (Integer) value;
-				setText(Utils.formatIntoHHMMSS(duration));
+				if (value instanceof Integer) {
+					int duration = (Integer) value;
+					setText(Utils.formatIntoHHMMSS(duration));
+				}
 			}
 		});
 
@@ -607,65 +659,30 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		pathColumnNr = columnNr.get("Path");
 
 		//tableModel = new javax.swing.table.DefaultTableModel();
-		tableModel = new javax.swing.table.DefaultTableModel() {
-			@Override
-			public boolean isCellEditable(int col, int row) {
-				return false;
-			}
+		listService = new LazyTrackList(columnIdentifiers);
+		lazyList = new SimpleLazyList<Object[]>(tableWindowSize, listService);
+		tableModel = new LazyTableModel(lazyList, playlistTable, listService, columnIdentifiers);
+//        tableModel = new LazyTableModel(lazyList, playlistTable, listService);
+		playlistTable.setModel(tableModel);
 
-			@Override
-			public Class<?> getColumnClass(int columnIndex) {
-				if (columnIndex == columnNr.get("#")
-						|| columnIndex == columnNr.get("Length")) {
-					return Integer.class;
-				} else {
-					return Object.class;
-				}
-			}
-		};
 		configurePlaylistTable();
 
 		// build playlist tree
-		TreeModel playlistTreeModel = Playlists.readPlaylists(new File("c:\\Users\\Thomas\\Dropbox\\PortableApps\\foobar2000\\"));
-		jTree1.setModel(playlistTreeModel);
+
+		TreeModel playlistTreeModel = Playlists.readPlaylists(new File(FPLPlaylist.fb2kDir));
+		playlistTree.setModel(playlistTreeModel);
+		trackQuery = new TrackQuery();
 
 		// @todo check resizing properties of table
 	}
 
-	private void searchDatabase(String query_text, int maxResults) {
-		if (maxResults == 0) {
-			maxResults = 1000000;
-		}
-		try {
-			String databaseUrl = "jdbc:h2:mem:account";
-			databaseUrl = "jdbc:h2:tcp://localhost/~/test";
-			System.setProperty(LocalLog.LOCAL_LOG_LEVEL_PROPERTY, "INFO");
-			ConnectionSource connectionSource = new JdbcConnectionSource(databaseUrl, "sa", "");
-			Dao<Track, String> trackDao =
-					DaoManager.createDao(connectionSource, Track.class);
+	private void searchDatabase(String query_text) {
+		trackQuery.setMinBPM((Integer)minBPM.getModel().getValue());
+		trackQuery.setMaxBPM((Integer)maxBPM.getModel().getValue());
 
-			//query = String.format("SELECT T.* FROM FT_SEARCH_DATA('%s', 1000000, 0) FT, TRACKS T WHERE FT.TABLE='TRACKS' AND T.ID=FT.KEYS[0]"
-			// 2nd and 3rd parameter of FTL_SEARCH_DATA are limit and offset
-			String query = String.format("SELECT T.* FROM FTL_SEARCH_DATA('%s', %d, 0) FTL, TRACKS T WHERE FTL.TABLE='TRACKS' AND T.ID=FTL.KEYS[0]"
-					+ " AND T.BPM <= %d AND T.BPM >= %d",
-					query_text, maxResults, (Integer) maxBPM.getModel().getValue(), (Integer) minBPM.getModel().getValue());
-			GenericRawResults<Track> rawResults =
-					trackDao.queryRaw(
-					query,
-					new TrackRawRowMapper());
-			addTracksToTable(rawResults.getResults());
-			updateStatusBar(Integer.toString(tableModel.getRowCount()) + " tracks found.");
-			rawResults.close();
-			// close the connection source
-			connectionSource.close();
-		} catch (SQLException ex) {
-			Logger.getLogger(DatabaseViewer.class.getName()).log(Level.SEVERE, null, ex);
-		}
-
-	}
-
-	private void addTrackToTable(Track track, int count) {
-		tableModel.addRow(new Object[]{Integer.valueOf(count), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track});
+		tableModel.setQuery(trackQuery.searchFulltext(query_text));
+		tableModel.fireTableStructureChanged();
+		updateStatusBar(Integer.toString(tableModel.getRowCount()) + " tracks found.");
 	}
 
 	private Track getTrackAtRow(int row) {
@@ -725,17 +742,41 @@ public class DatabaseViewer extends javax.swing.JFrame {
 	}
 
 	private void newFilter() {
-		RowFilter<TableModel, Object> rf = null;
-		//If current expression doesn't parse, don't update.
-		try {
-			rf = RowFilter.regexFilter("(?i)" + filterField.getText());
-			filters.set(1, rf);
-			//sorter.sort();
-			rowfilter = RowFilter.andFilter(filters);
-			sorter.setRowFilter(rowfilter);
-		} catch (java.util.regex.PatternSyntaxException e) {
-			return;
+		final String whitespaceChars = " \t\n\r\f+\"*%&/()=?'!,.;:-_#@|^~`{}[]<>\\";
+		// cut out trailing whitespacecharacters
+		String s = filterField.getText();
+		int i = s.length() - 1;
+		while (i >= 0) {
+			if (!whitespaceChars.contains("" + s.charAt(i))) {
+				break;
+			} else {
+				i--;
+			}
 		}
+		s = s.substring(0, i + 1);
+		if (!Utils.isEmpty(s)) {
+			if (trackQuery.fullTextMode()) {
+				searchDatabase(queryField.getText() + " " + s + "*");
+			} else if (trackQuery.PlaylistMode()) {
+				//@todo fix this
+				//loadSelectedPlaylist(s);
+			}
+		}
+		/*
+		 RowFilter<TableModel, Object> rf = null;
+		 //If current expression doesn't parse, don't update.
+		
+		 try {
+		 rf = RowFilter.regexFilter("(?i)" + filterField.getText());
+		 filters.set(1, rf);
+		 //sorter.sort();
+		 rowfilter = RowFilter.andFilter(filters);
+		 sorter.setRowFilter(rowfilter);
+		 } catch (java.util.regex.PatternSyntaxException e) {
+		 return;
+		 }
+		 */
+
 	}
 
 	private void addTracksToTable(List<Track> tracks) {
@@ -755,7 +796,7 @@ public class DatabaseViewer extends javax.swing.JFrame {
 		}
 		playlistTable.setAutoCreateRowSorter(false);
 		playlistTable.setAutoCreateColumnsFromModel(false);
-		tableModel.setDataVector(dataVector, columns);
+		//	tableModel.setDataVector(dataVector, columns);
 	}
 
 	private void queryFieldChanged() {
@@ -770,5 +811,101 @@ public class DatabaseViewer extends javax.swing.JFrame {
 //			}
 //			searchDatabase(query, 100);
 //		}
+	}
+
+	private ArrayList<Playlist> getLeafs(JTree tree) {
+		TreeModel model = tree.getModel();
+		ArrayList<Playlist> list = new ArrayList<>();
+
+		if (model != null) {
+			Object root = model.getRoot();
+			walk(model, root, list);
+		}
+		return list;
+	}
+
+	private void walk(TreeModel model, Object o, ArrayList<Playlist> list) {
+		int cc;
+		cc = model.getChildCount(o);
+		for (int i = 0; i < cc; i++) {
+			Object child = model.getChild(o, i);
+			if (model.isLeaf(child)) {
+				DefaultMutableTreeNode node = (DefaultMutableTreeNode) child;
+				if (node.getUserObject() instanceof Playlist) {
+					Playlist playlist = (Playlist) node.getUserObject();
+					list.add(playlist);
+				}
+			} else {
+				// folder
+				walk(model, child, list);
+			}
+		}
+	}
+
+	private void playlistsImport() {
+		try {
+			Database db = new Database();
+			Dao<Track, String> trackDao = db.getTrackDao();
+			Dao<PlaylistToTrackMapping, String> plToTrackDao = DaoManager.createDao(db.getConnectionSource(), PlaylistToTrackMapping.class);
+			Dao<LiteTrack, String> liteTrackDao = DaoManager.createDao(db.getConnectionSource(), LiteTrack.class);
+			ArrayList<Playlist> playlists = getLeafs(playlistTree);
+			TableUtils.dropTable(db.getConnectionSource(), PlaylistToTrackMapping.class,true);
+			TableUtils.createTable(db.getConnectionSource(), PlaylistToTrackMapping.class);
+			TableUtils.dropTable(db.getConnectionSource(), LiteTrack.class, true);
+			TableUtils.createTable(db.getConnectionSource(), LiteTrack.class);
+			for (Playlist playlist : playlists) {
+				int playlist_nr;
+				try {
+					playlist_nr = playlist.getNr();
+				} catch (NumberFormatException e) {
+					throw e;
+				}
+
+				System.out.printf("Playlist nr: %d %s\n", playlist_nr, playlist.title);
+
+				int i = 0;
+				Track queryTrack = new Track();
+				for (Track track : playlist.getTracks()) {
+					LiteTrack liteTrack = new LiteTrack(track.getFilename(), track.getTracknumber(), playlist_nr, i);
+					liteTrackDao.create(liteTrack);
+
+					// SELECT  LITETRACk.FILENAME, ID, PLAYLIST_NR FROM LITETRACK LEFT OUTER JOIN TRACKS
+					// ON LITETRACK.FILENAME = TRACKS.FILENAME AND LITETRACK.TRACKNUMBER = TRACKS.TRACKNUMBER
+//SELECT  L.TRACKNUMBER, T.TRACKNUMBER, L.FILENAME, ID, PLAYLIST_NR FROM LITETRACK L LEFT OUTER JOIN TRACKS T
+//ON L.FILENAME = T.FILENAME AND (L.TRACKNUMBER=T.TRACKNUMBER OR (L.TRACKNUMBER IS NULL AND T.TRACKNUMBER IS NULL))
+
+					/*
+					try {
+						queryTrack.setFilename(track.getFilename());
+						queryTrack.setTracknumber(track.getTracknumber());
+						List<Track> matchingTracks = trackDao.queryForMatchingArgs(queryTrack);
+						//@todo maybe use joins
+						if (null != matchingTracks && matchingTracks.size() > 0) {
+							// add track
+							track = matchingTracks.get(0);
+						} else {
+							// add track to database but mark it as not in database because it is not in foobar database
+							track.setInDatabase(false);
+							trackDao.create(track);
+						}
+						PlaylistToTrackMapping mapping = new PlaylistToTrackMapping(playlist_nr, track.getId(), i);
+						if (plToTrackDao.update(mapping) == 0) {
+							plToTrackDao.create(mapping);
+						}
+					} catch (SQLException ex) {
+						Logger.getLogger(DatabaseViewer.class.getName()).log(Level.SEVERE, null, ex);
+					}
+					*/
+					i++;
+				}
+			}
+			DatabaseConnection conn = db.getConnectionSource().getReadWriteConnection();
+			conn.update(
+"INSERT INTO PLAYLISTTOTRACKMAPPING(PLAYLIST_NR, TRACK_ID, TRACK_NR) SELECT L.PLAYLIST_NR, T.ID, L.POSITION FROM LITETRACK L INNER JOIN TRACKS T ON L.FILENAME = T.FILENAME AND (L.TRACKNUMBER=T.TRACKNUMBER OR (L.TRACKNUMBER IS NULL AND T.TRACKNUMBER IS NULL))",null,null);
+			conn.close();
+			db.close();
+		} catch (SQLException ex) {
+			Logger.getLogger(DatabaseViewer.class.getName()).log(Level.SEVERE, null, ex);
+		}
 	}
 }
