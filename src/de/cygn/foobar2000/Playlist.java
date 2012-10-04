@@ -13,18 +13,20 @@ import java.util.logging.Logger;
  */
 public class Playlist {
 
-	public enum PlaylistType {NORMAL, AUTO};
+	public enum PlaylistType {
+
+		NORMAL, AUTO
+	};
 	String filename;
 	String title;
 	PlaylistType type = PlaylistType.NORMAL;
 	int id;
-	
 	private ArrayList<Track> tracks;
-	
+
 	public ArrayList<Track> getTracks() {
-		if (tracks != null)
+		if (tracks != null) {
 			return tracks;
-		else {
+		} else {
 			File fpl_file = new File(filename);
 			try {
 				tracks = FPLPlaylist.readPlaylist(fpl_file);
@@ -42,15 +44,16 @@ public class Playlist {
 	}
 
 	public int getNr() {
-			String playlist_filename = new File(filename).getName();
-			return Integer.valueOf(playlist_filename.substring(0, playlist_filename.length() - 4));
+		String playlist_filename = new File(filename).getName();
+		return Integer.valueOf(playlist_filename.substring(0, playlist_filename.length() - 4));
 	}
 
 	@Override
 	public String toString() {
 		String result = title;
-		if (type==PlaylistType.AUTO)
+		if (type == PlaylistType.AUTO) {
 			result += " (auto)";
+		}
 		return result;
 	}
 }

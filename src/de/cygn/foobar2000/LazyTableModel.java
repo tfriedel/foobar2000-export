@@ -1,14 +1,7 @@
 package de.cygn.foobar2000;
 
-import de.cygn.foobar2000.database.TrackQuery;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.Collections;
 import java.util.HashMap;
 import javax.swing.JTable;
-import javax.swing.event.TableModelEvent;
-import javax.swing.table.TableColumn;
-import javax.swing.table.TableColumnModel;
 import org.dani.lazy.table.LazyListTableModel;
 import org.dani.lazy.util.SimpleLazyList;
 import org.dani.lazy.util.IndexInterval;

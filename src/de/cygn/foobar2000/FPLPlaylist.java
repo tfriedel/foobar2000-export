@@ -285,7 +285,6 @@ public class FPLPlaylist {
 			// @todo: make a guess by finding first string
 		}
 		ch.close();
-		f.close();
 		return tracklist;
 	}
 

@@ -70,7 +70,9 @@ public class Playlists {
 			Logger.getLogger(Playlists.class.getName()).log(Level.SEVERE, null, ex);
 		} finally {
 			try {
-				f.close();
+				if (f != null) {
+					f.close();
+				}
 			} catch (IOException ex) {
 				Logger.getLogger(Playlists.class.getName()).log(Level.SEVERE, null, ex);
 			}
@@ -146,11 +148,12 @@ public class Playlists {
 	}
 
 	/**
-	 * opens playlist organizer configuration files and reads a string
-	 * which stores the playlist tree. 
+	 * opens playlist organizer configuration files and reads a string which
+	 * stores the playlist tree.
+	 *
 	 * @param foobarFolder
 	 * @return
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	private static String readTreeString(File foobarFolder) throws IOException {
 		FileInputStream plorgcfg = null;
@@ -168,7 +171,7 @@ public class Playlists {
 		MappedByteBuffer mb;
 		if (plorgcfg != null) {
 			if (columnscfg != null) {
-			// open columns file, find position of treestring, read string, return
+				// open columns file, find position of treestring, read string, return
 				ch = columnscfg.getChannel();
 				mb = ch.map(FileChannel.MapMode.READ_ONLY, 0L, ch.size());
 				mb.order(ByteOrder.LITTLE_ENDIAN);
@@ -177,30 +180,31 @@ public class Playlists {
 					// we are looking for at least 8 bytes of 0xFF
 					// after that there's hopefully the string we are looking for
 					// we will check if that string starts with <F> or <P> to verify that
-					if (w != -1)
+					if (w != -1) {
 						continue;
-					else {
-						byte b=-1;
-						while (b == -1 && mb.remaining()>8) {
+					} else {
+						byte b = -1;
+						while (b == -1 && mb.remaining() > 8) {
 							b = mb.get();
 						}
-						int old_position = mb.position()-1;
+						int old_position = mb.position() - 1;
 						mb.position(old_position);
 						int i = mb.getInt();
-						assert i != -1 || mb.remaining()<=8;
-						if (mb.remaining() <= 8)
+						assert i != -1 || mb.remaining() <= 8;
+						if (mb.remaining() <= 8) {
 							break;
+						}
 						assert i != -1;
-						if (i>mb.remaining())
+						if (i > mb.remaining()) {
 							continue; // not a string
-						// one step back and try to read that string
+						}						// one step back and try to read that string
 						mb.position(old_position);
 						String possibleTreeString = Utils.getString(mb);
-						if (possibleTreeString.startsWith("<P>") ||
-								possibleTreeString.startsWith("<F>")) {
+						if (possibleTreeString.startsWith("<P>")
+								|| possibleTreeString.startsWith("<F>")) {
 							treeString = possibleTreeString;
 						} else {
-							mb.position(old_position+4);	
+							mb.position(old_position + 4);
 						}
 					}
 				}
@@ -218,6 +222,20 @@ public class Playlists {
 				int unknown10 = mb.getInt(); // 456
 			}
 		}
+		if (columnscfg != null) {
+			try {
+				columnscfg.close();
+			} catch (IOException ex) {
+			}
+		}
+		if (plorgcfg != null) {
+			try {
+				plorgcfg.close();
+			} catch (IOException ex) {
+			}
+		}
+
+
 		return treeString;
 
 	}
