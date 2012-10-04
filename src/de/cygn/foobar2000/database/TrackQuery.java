@@ -98,7 +98,7 @@ public class TrackQuery {
 	}
 
 	public String getCountQuery() {
-		String countQuery = "select count(*) " + getBaseQuery();
+		String countQuery = "select count(*) " + String.format(getBaseQuery(),10000000,0);
 		return countQuery;
 	}
 
@@ -122,9 +122,12 @@ public class TrackQuery {
 	}
 
 	public void buildQuery() {
-
-		query = String.format(TrackRawRowMapper.select_fields, (currentKey == null) ? "NULL" : "'" + currentKey + "'", Float.toString(currentBPM))
-				+ getBaseQuery() + ordering + String.format(" LIMIT %d OFFSET %d", endElement - startElement, startElement);
+		if (lastSearchMode == LastSearchModeType.PLAYLIST)
+			query = String.format(TrackRawRowMapper.select_fields, (currentKey == null) ? "NULL" : "'" + currentKey + "'", Float.toString(currentBPM))
+					+ getBaseQuery() + ordering + String.format(" LIMIT %d OFFSET %d", endElement - startElement, startElement);
+		else
+			query = String.format(TrackRawRowMapper.select_fields, (currentKey == null) ? "NULL" : "'" + currentKey + "'", Float.toString(currentBPM))
+					+ String.format(getBaseQuery(),endElement - startElement, startElement) + ordering;
 
 	}
 
