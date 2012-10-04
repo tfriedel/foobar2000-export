@@ -6,6 +6,7 @@ import com.j256.ormlite.dao.GenericRawResults;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.logger.LocalLog;
 import com.j256.ormlite.support.ConnectionSource;
+import de.cygn.foobar2000.database.TrackQuery;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -25,14 +26,16 @@ public class LazyTrackList implements LazyListService<Object[]> {
 	Object[] empty = {Integer.valueOf(0), "", "", "", "", "", "", Integer.valueOf(0), "", Float.valueOf(0), Integer.valueOf(0), "", "", ""};
 	private final String[] columnIdentifiers;
 	private String ordering;
+	private TrackQuery trackQuery;
 
-	public LazyTrackList(String[] columnIdentifiers) {
+	public LazyTrackList(String[] columnIdentifiers, TrackQuery trackQuery) {
 		try {
 			Database db = new Database();
 			// @todo close database when destroyed
 			this.trackDao = db.getTrackDao();
 			this.columnIdentifiers = columnIdentifiers;
 			this.columns = columnIdentifiers.length;
+			this.trackQuery = trackQuery;
 			rows = 0;
 			ordering = "";
 		} catch (Exception ex) {
@@ -46,15 +49,16 @@ public class LazyTrackList implements LazyListService<Object[]> {
 			return new Object[endElement - startElement][columns];
 		}
 		try {
+			trackQuery.endElement = endElement;
+			trackQuery.startElement = startElement;
 			GenericRawResults<Track> rawResults =
 					trackDao.queryRaw(
-					TrackRawRowMapper.select_fields
-					+ String.format(query, endElement - startElement, startElement) + " " + ordering,
+					trackQuery.getQuery(),
 					new TrackRawRowMapper());
 			int i = 0;
 			List<Track> tracks = rawResults.getResults();
 			for (Track track : tracks) {
-				Object[] a = {Integer.valueOf(track.getId()), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track};
+				Object[] a = {Integer.valueOf(track.getId()), track.getArtist(), track.getTitle(), track.getAlbum(), track.getCatnr(), track.getPublisher(), track.getDate(), Integer.valueOf((int) track.getDuration()), track.getKey_start(), Float.valueOf(track.getBpm()), Integer.valueOf(track.getRating()), track.getBitrate(), track.getCodec(), track, Boolean.valueOf(track.isCompatible)};
 				result[i++] = a;
 			}
 		} catch (SQLException ex) {
@@ -73,8 +77,7 @@ public class LazyTrackList implements LazyListService<Object[]> {
 		this.query = query;
 		GenericRawResults<String[]> rawResults;
 		try {
-			rawResults = trackDao.queryRaw(
-					"select count(*) " + String.format(query, 1000000, 0));
+			rawResults = trackDao.queryRaw(trackQuery.getCountQuery());
 			// there should be 1 result
 			List<String[]> results = rawResults.getResults();
 			// the results array should have 1 value

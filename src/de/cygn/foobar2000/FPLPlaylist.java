@@ -494,7 +494,8 @@ public class FPLPlaylist {
 		trackDao.executeRaw("CREATE ALIAS IF NOT EXISTS FTL_INIT FOR \"org.h2.fulltext.FullTextLucene.init\"");
 		trackDao.executeRaw("CALL FTL_INIT()");
 		trackDao.executeRaw("CALL FTL_DROP_ALL()");
-		trackDao.executeRaw("CALL FTL_CREATE_INDEX('PUBLIC', 'TRACKS',NULL)");;
+		trackDao.executeRaw("CALL FTL_CREATE_INDEX('PUBLIC', 'TRACKS',NULL)");
+		trackDao.executeRaw("CREATE ALIAS KEY_COMPATIBLE FOR \"de.cygn.foobar2000.KeyCompatibility.compatible\"");
 		// close the connection source
 		db.close();
 		saveHashes(createHashes(tracklist));

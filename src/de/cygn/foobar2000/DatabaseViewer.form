@@ -236,7 +236,6 @@
       <SubComponents>
         <Component class="javax.swing.JTable" name="playlistTable">
           <Properties>
-            <Property name="autoCreateRowSorter" type="boolean" value="true"/>
             <Property name="toolTipText" type="java.lang.String" value=""/>
             <Property name="autoResizeMode" type="int" value="3"/>
           </Properties>
@@ -316,7 +315,7 @@
         <Property name="text" type="java.lang.String" value="hide other"/>
       </Properties>
       <Events>
-        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="jCheckBox1StateChanged"/>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jCheckBox1ActionPerformed"/>
       </Events>
     </Component>
     <Component class="javax.swing.JLabel" name="filterLabel">

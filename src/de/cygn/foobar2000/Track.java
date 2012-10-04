@@ -10,34 +10,48 @@ import java.io.File;
 
 @DatabaseTable(tableName = "tracks")
 public class Track {
-
-	@DatabaseField(generatedId = true)
+	public static final String ID_FIELD_NAME = "ID";
+	public static final String ARTIST_FIELD_NAME = "ARTIST";
+	public static final String TITLE_FIELD_NAME = "TITLE";
+	public static final String ALBUM_FIELD_NAME = "ALBUM";
+	public static final String CATNR_FIELD_NAME = "CATNR";
+	public static final String PUBLISHER_FIELD_NAME = "PUBLISHER";
+	public static final String DATE_FIELD_NAME = "DATE";
+	public static final String FILETIME_IN_MILLIS_FIELD_NAME = "FILETIME_IN_MILLIS";
+	public static final String KEY_START_FIELD_NAME = "KEY_START";
+	public static final String BPM_FIELD_NAME = "BPM";
+	public static final String RATING_FIELD_NAME = "RATING";
+	public static final String BITRATE_FIELD_NAME = "BITRATE";
+	public static final String CODEC_FIELD_NAME = "CODEC";
+	public static final String FILENAME_FIELD_NAME = "FILENAME";
+	public static final String DURATION_FIELD_NAME = "DURATION";
+	@DatabaseField(generatedId = true, columnName = ID_FIELD_NAME)
 	private int id;
-	@DatabaseField(index = true, uniqueIndexName = "uniqueIdx")
+	@DatabaseField(index = true, uniqueIndexName = "uniqueIdx", columnName = FILENAME_FIELD_NAME)
 	private String filename;
-	@DatabaseField
+	@DatabaseField (columnName = FILETIME_IN_MILLIS_FIELD_NAME)
 	private long filetime_in_millis;
-	@DatabaseField
+	@DatabaseField (columnName = ARTIST_FIELD_NAME)
 	private String artist;
 	@DatabaseField
 	private String album_artist;
-	@DatabaseField
+	@DatabaseField (columnName = TITLE_FIELD_NAME)
 	private String title;
 	@DatabaseField(uniqueIndexName = "uniqueIdx")
 	private String tracknumber;
-	@DatabaseField
+	@DatabaseField (columnName = BITRATE_FIELD_NAME)
 	private String bitrate;
-	@DatabaseField
+	@DatabaseField (columnName = ALBUM_FIELD_NAME)
 	private String album;
-	@DatabaseField
+	@DatabaseField (columnName = DATE_FIELD_NAME)
 	private String date;
 	@DatabaseField(dataType = DataType.LONG_STRING)
 	private String comment;
-	@DatabaseField
+	@DatabaseField (columnName = CATNR_FIELD_NAME)
 	private String catnr;
-	@DatabaseField
+	@DatabaseField (columnName = CODEC_FIELD_NAME)
 	private String codec;
-	@DatabaseField
+	@DatabaseField (columnName = PUBLISHER_FIELD_NAME)
 	private String publisher;
 	@DatabaseField
 	private String discogs_release_id;
@@ -45,16 +59,16 @@ public class Track {
 	private String style;
 	@DatabaseField
 	private String genre;
-	@DatabaseField
+	@DatabaseField (columnName = BPM_FIELD_NAME)
 	private float bpm;
-	@DatabaseField
+	@DatabaseField (columnName = RATING_FIELD_NAME)
 	private int rating;
-	@DatabaseField
+	@DatabaseField (columnName = KEY_START_FIELD_NAME)
 	private String key_start;
 	/**
 	 * duration in seconds
 	 */
-	@DatabaseField
+	@DatabaseField (columnName = DURATION_FIELD_NAME)
 	private double duration;
 	@DatabaseField
 	private int filesize;
@@ -68,6 +82,9 @@ public class Track {
 	private float trackReplayPeak;
 	@DatabaseField
 	private boolean inDatabase;
+
+	/** true if current track is key compatible to this track */
+	public boolean isCompatible;
 	private HashMap<String, ArrayList<String>> properties;
 
 	public String toString() {

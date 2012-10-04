@@ -10,7 +10,7 @@ import java.sql.SQLException;
 public class TrackRawRowMapper implements RawRowMapper<Track> {
 
 	public static String select_fields =
-			"SELECT T.ID, T.FILENAME, T.FILETIME_IN_MILLIS, T.ARTIST, T.ALBUM_ARTIST, T.TITLE, T.TRACKNUMBER, T.BITRATE, T.ALBUM, T.DATE, T.COMMENT, T.CATNR, T.CODEC, T.PUBLISHER, T.DISCOGS_RELEASE_ID, T.STYLE, T.GENRE, T.BPM, T.RATING, T.KEY_START, T.DURATION, T.FILESIZE, T.ALBUMREPLAYGAIN, T.TRACKREPLAYGAIN, T.ALBUMREPLAYPEAK, T.TRACKREPLAYPEAK, T.INDATABASE ";
+			"SELECT T.ID, T.FILENAME, T.FILETIME_IN_MILLIS, T.ARTIST, T.ALBUM_ARTIST, T.TITLE, T.TRACKNUMBER, T.BITRATE, T.ALBUM, T.DATE, T.COMMENT, T.CATNR, T.CODEC, T.PUBLISHER, T.DISCOGS_RELEASE_ID, T.STYLE, T.GENRE, T.BPM, T.RATING, T.KEY_START, T.DURATION, T.FILESIZE, T.ALBUMREPLAYGAIN, T.TRACKREPLAYGAIN, T.ALBUMREPLAYPEAK, T.TRACKREPLAYPEAK, T.INDATABASE, KEY_COMPATIBLE(%s, T.KEY_START, %s, T.BPM) ";
 
 	@Override
 	public Track mapRow(String[] columnNames, String[] resultColumns) throws SQLException {
@@ -43,6 +43,7 @@ public class TrackRawRowMapper implements RawRowMapper<Track> {
 		t.setAlbumReplayPeak(Float.valueOf(r[24]));
 		t.setTrackReplayPeak(Float.valueOf(r[25]));
 		t.setInDatabase(Boolean.valueOf(r[26]));
+		t.isCompatible = Boolean.valueOf(r[27]);
 		return t;
 	}
 }
